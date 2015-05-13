@@ -36,10 +36,10 @@ from twisted.web._newclient import HTTP11ClientProtocol, Response
 
 from twisted.internet.interfaces import IOpenSSLClientConnectionCreator
 from zope.interface.declarations import implementer
+from twisted.web.iweb import IPolicyForHTTPS
 from twisted.python.deprecate import getDeprecationWarningString
 from twisted.python.versions import Version
 from twisted.web.client import BrowserLikePolicyForHTTPS
-from twisted.internet._sslverify import IOpenSSLTrustRoot
 from twisted.web.error import SchemeNotSupported
 
 try:
@@ -48,9 +48,7 @@ try:
 except ImportError:
     ssl = None
 else:
-    from twisted.internet._sslverify import ClientTLSOptions
-    from twisted.web.iweb import IPolicyForHTTPS
-
+    from twisted.internet._sslverify import ClientTLSOptions, IOpenSSLTrustRoot
 
 
 class StubHTTPProtocol(Protocol):
