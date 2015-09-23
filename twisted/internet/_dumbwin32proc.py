@@ -28,7 +28,7 @@ PIPE_ATTRS_INHERITABLE.bInheritHandle = 1
 from zope.interface import implementer
 from twisted.internet.interfaces import IProcessTransport, IConsumer, IProducer
 
-from twisted.python.compat import items
+from twisted.python.compat import items, _PY3
 from twisted.python.win32 import quoteArguments
 
 from twisted.internet import error
@@ -55,6 +55,7 @@ class _Reaper(_pollingfile._PollableResource):
         return 0
 
 
+
 def _findShebang(filename):
     """
     Look for a #! line, and return the value following the #! if one exists, or
@@ -76,10 +77,12 @@ def _findShebang(filename):
 
     @return: a str representing another filename.
     """
-    f = file(filename, 'rU')
-    if f.read(2) == '#!':
-        exe = f.readline(1024).strip('\n')
-        return exe
+    with open(filename, 'rU') as f:
+        if f.read(2) == '#!':
+            exe = f.readline(1024).strip('\n')
+            return exe
+
+
 
 def _invalidWin32App(pywinerr):
     """
@@ -172,7 +175,15 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         env = os.environ.copy()
         env.update(environment or {})
 
+        if _PY3:
+            # Make sure all the arguments are str
+            args = [x.decode('mbcs') if isinstance(x, bytes) else x for x in args]
+
         cmdline = quoteArguments(args)
+
+        if _PY3 and isinstance(command, bytes):
+            command = command.decode('mbcs')
+
         # TODO: error detection here.  See #2787 and #4184.
         def doCreate():
             self.hProcess, self.hThread, self.pid, dwTid = win32process.CreateProcess(
@@ -188,7 +199,7 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
                     raise
                 newenv = {}
                 for key, value in items(env):
-                    newenv[unicode(key, 'utf8')] = unicode(value, 'utf8')
+                    newenv[unicode(key, 'mbcs')] = unicode(value, 'mbcs')
                 env = newenv
                 doCreate()
         except pywintypes.error as pwte:
