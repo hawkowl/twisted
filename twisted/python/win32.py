@@ -73,8 +73,8 @@ def getProgramFilesPath():
     return win32api.RegQueryValueEx(currentV, 'ProgramFilesDir')[0]
 
 
-_cmdLineQuoteRe = re.compile(r'(\\*)"')
-_cmdLineQuoteRe2 = re.compile(r'(\\+)\Z')
+_cmdLineQuoteRe = re.compile(rb'(\\*)"')
+_cmdLineQuoteRe2 = re.compile(rb'(\\+)\Z')
 def cmdLineQuote(s):
     """
     Internal method for quoting a single command-line argument.
@@ -82,13 +82,15 @@ def cmdLineQuote(s):
     @param s: an unquoted string that you want to quote so that something that
         does cmd.exe-style unquoting will interpret it as a single argument,
         even if it contains spaces.
-    @type s: C{str}
+    @type s: C{bytes}
 
     @return: a quoted string.
-    @rtype: C{str}
+    @rtype: C{bytes}
     """
-    quote = ((" " in s) or ("\t" in s) or ('"' in s) or s == '') and '"' or ''
-    return quote + _cmdLineQuoteRe2.sub(r"\1\1", _cmdLineQuoteRe.sub(r'\1\1\\"', s)) + quote
+    print(s)
+    print(type(s))
+    quote = ((b" " in s) or (b"\t" in s) or (b'"' in s) or s == b'') and b'"' or b''
+    return quote + _cmdLineQuoteRe2.sub(rb"\1\1", _cmdLineQuoteRe.sub(rb'\1\1\\"', s)) + quote
 
 def quoteArguments(arguments):
     """
@@ -100,7 +102,7 @@ def quoteArguments(arguments):
 
     @return: a single string, with the given sequence quoted as necessary.
     """
-    return ' '.join([cmdLineQuote(a) for a in arguments])
+    return b' '.join([cmdLineQuote(a) for a in arguments])
 
 
 class _ErrorFormatter(object):

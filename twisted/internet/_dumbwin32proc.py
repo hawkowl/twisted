@@ -6,6 +6,8 @@
 http://isometric.sixsided.org/_/gates_in_the_head/
 """
 
+from __future__ import absolute_import, division, print_function
+
 import os
 
 # Win32 imports
@@ -23,9 +25,10 @@ import pywintypes
 PIPE_ATTRS_INHERITABLE = win32security.SECURITY_ATTRIBUTES()
 PIPE_ATTRS_INHERITABLE.bInheritHandle = 1
 
-from zope.interface import implements
+from zope.interface import implementer
 from twisted.internet.interfaces import IProcessTransport, IConsumer, IProducer
 
+from twisted.python.compat import items
 from twisted.python.win32 import quoteArguments
 
 from twisted.internet import error
@@ -35,7 +38,7 @@ from twisted.internet._baseprocess import BaseProcess
 
 def debug(msg):
     import sys
-    print msg
+    print(msg)
     sys.stdout.flush()
 
 class _Reaper(_pollingfile._PollableResource):
@@ -94,6 +97,8 @@ def _invalidWin32App(pywinerr):
 
     return pywinerr.args[0] == 193
 
+
+@implementer(IProcessTransport, IConsumer, IProducer)
 class Process(_pollingfile._PollingTimer, BaseProcess):
     """A process that integrates with the Twisted event loop.
 
@@ -112,8 +117,6 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         msvcrt.setmode(sys.stderr.fileno(), os.O_BINARY)
 
     """
-    implements(IProcessTransport, IConsumer, IProducer)
-
     closedNotifies = 0
 
     def __init__(self, reactor, protocol, command, args, environment, path):
@@ -177,18 +180,18 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         try:
             try:
                 doCreate()
-            except TypeError, e:
+            except TypeError as e:
                 # win32process.CreateProcess cannot deal with mixed
                 # str/unicode environment, so we make it all Unicode
                 if e.args != ('All dictionary items must be strings, or '
                               'all must be unicode',):
                     raise
                 newenv = {}
-                for key, value in env.items():
-                    newenv[unicode(key)] = unicode(value)
+                for key, value in items(env):
+                    newenv[unicode(key, 'utf8')] = unicode(value, 'utf8')
                 env = newenv
                 doCreate()
-        except pywintypes.error, pwte:
+        except pywintypes.error as pwte:
             if not _invalidWin32App(pwte):
                 # This behavior isn't _really_ documented, but let's make it
                 # consistent with the behavior that is documented.
@@ -210,7 +213,7 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
                     try:
                         # Let's try again.
                         doCreate()
-                    except pywintypes.error, pwte2:
+                    except pywintypes.error as pwte2:
                         # d'oh, failed again!
                         if _invalidWin32App(pwte2):
                             raise OSError(
@@ -265,7 +268,7 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         """
         Write data to the process' stdin.
 
-        @type data: C{str}
+        @type data: C{bytes}
         """
         self.stdin.write(data)
 
@@ -274,7 +277,7 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         """
         Write data to the process' stdin.
 
-        @type data: C{list} of C{str}
+        @type data: C{list} of C{bytes}
         """
         self.stdin.writeSequence(seq)
 
@@ -291,7 +294,7 @@ class Process(_pollingfile._PollingTimer, BaseProcess):
         @type fd: C{int}
 
         @param data: The bytes to write.
-        @type data: C{str}
+        @type data: C{bytes}
 
         @return: C{None}
 
