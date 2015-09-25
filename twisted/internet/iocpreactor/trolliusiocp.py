@@ -21,6 +21,6 @@ class CompletionPort(object):
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
 
         if not status:
-            status = (0, b"", 0, NONE)
+            status = (0, b"", 0, None)
 
         return status
