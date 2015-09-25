@@ -1,4 +1,9 @@
-from trollius import _overlapped
+
+try:
+    import _overlapped
+except ImportError:
+    from trollius import _overlapped
+
 
 class CompletionPort(object):
     """
