@@ -28,3 +28,8 @@ class CompletionPort(object):
             return (const.WAIT_TIMEOUT, None, None, None)
 
         return status
+
+
+    def addHandle(self, handle, key):
+
+        _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
