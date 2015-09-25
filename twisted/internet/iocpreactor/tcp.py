@@ -445,7 +445,7 @@ class Port(_SocketCloser, _LogOwner):
         except socket.error as le:
             raise error.CannotListenError(self.interface, self.port, le)
 
-        self.addrLen = _iocp.maxAddrLen(skt.fileno())
+        #self.addrLen = _iocp.maxAddrLen(skt.fileno())
 
         # Make sure that if we listened on port 0, we update that to
         # reflect what the OS actually assigned us.
