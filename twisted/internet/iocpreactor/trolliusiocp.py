@@ -47,7 +47,7 @@ class CompletionPort(object):
         _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
 
 
-def accept(self, listening, accepting, event):
+def accept(listening, accepting, event):
 
-    ov = _overlapped.Overlapped(NULL)
+    ov = _overlapped.Overlapped(event)
     ov.AcceptEx(listening.fileno(), accepting.fileno())

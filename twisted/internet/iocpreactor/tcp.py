@@ -445,8 +445,6 @@ class Port(_SocketCloser, _LogOwner):
         except socket.error as le:
             raise error.CannotListenError(self.interface, self.port, le)
 
-        #self.addrLen = _iocp.maxAddrLen(skt.fileno())
-
         # Make sure that if we listened on port 0, we update that to
         # reflect what the OS actually assigned us.
         self._realPortNumber = skt.getsockname()[1]
@@ -581,8 +579,8 @@ class Port(_SocketCloser, _LogOwner):
 
         evt.newskt = newskt = self.reactor.createSocket(self.addressFamily,
                                                         self.socketType)
-        rc = _iocp.accept(self.socket, newskt, evt)
-        print(rc)
+
+        rc = _iocp.accept(self.socket.fileno(), newskt.fileno(), buff, evt)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)
