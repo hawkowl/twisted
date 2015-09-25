@@ -16,7 +16,10 @@ from twisted.internet.tcp import _SocketCloser, Connector as TCPConnector
 from twisted.internet.tcp import _AbortingMixin, _BaseBaseClient, _BaseTCPClient
 from twisted.python import log, failure, reflect
 
-from twisted.internet.iocpreactor import iocpsupport as _iocp, abstract
+from twisted.internet.iocpreactor import abstract
+
+from twisted.internet.iocpreactor import trolliusiocp as _iocp
+
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
 from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
 from twisted.internet.iocpreactor.const import SO_UPDATE_CONNECT_CONTEXT
@@ -389,7 +392,7 @@ class Connector(TCPConnector):
 
 @implementer(interfaces.IListeningPort)
 class Port(_SocketCloser, _LogOwner):
-    
+
     connected = False
     disconnected = False
     disconnecting = False
@@ -576,14 +579,10 @@ class Port(_SocketCloser, _LogOwner):
     def doAccept(self):
         evt = _iocp.Event(self.cbAccept, self)
 
-        # see AcceptEx documentation
-        evt.buff = buff = _iocp.AllocateReadBuffer(2 * (self.addrLen + 16))
-
         evt.newskt = newskt = self.reactor.createSocket(self.addressFamily,
                                                         self.socketType)
-        rc = _iocp.accept(self.socket.fileno(), newskt.fileno(), buff, evt)
+        rc = _iocp.accept(self.socket, newskt, evt)
+        print(rc)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)
-
-

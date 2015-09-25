@@ -55,7 +55,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
 
     def __init__(self):
         base.ReactorBase.__init__(self)
-        self.port = _iocp.CompletionPort()
+        self.port = _iocp.CompletionPort(self)
         self.handles = set()
 
 
