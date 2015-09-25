@@ -17,7 +17,6 @@ from twisted.internet.tcp import _AbortingMixin, _BaseBaseClient, _BaseTCPClient
 from twisted.python import log, failure, reflect
 
 from twisted.internet.iocpreactor import abstract
-
 from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
@@ -545,6 +544,7 @@ class Port(_SocketCloser, _LogOwner):
         if self.disconnecting or self.disconnected:
             return False
 
+        print('handling')
         # possible errors:
         # (WSAEMFILE, WSAENOBUFS, WSAENFILE, WSAENOMEM, WSAECONNABORTED)
         if rc:
@@ -575,12 +575,22 @@ class Port(_SocketCloser, _LogOwner):
 
 
     def doAccept(self):
+
+        import sys
+        from twisted.python.util import spewer
+        sys.settrace(spewer)
+
         evt = _iocp.Event(self.cbAccept, self)
 
-        evt.newskt = newskt = self.reactor.createSocket(self.addressFamily,
-                                                        self.socketType)
+        evt.newskt = self.reactor.createSocket(self.addressFamily,
+                                               self.socketType)
 
-        rc = _iocp.accept(self.socket.fileno(), newskt.fileno(), buff, evt)
+        print(_iocp.accept)
+        rc = _iocp.accept(self.socket, evt.newskt)
 
-        if rc and rc != ERROR_IO_PENDING:
+        print('ho')
+        print("RET", rc)
+
+        if rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)
+
