@@ -20,7 +20,6 @@ class CompletionPort(object):
 
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
 
-        if not status:
-            status = (0, b"", 0, None)
+        print(status)
 
         return status
