@@ -4,6 +4,8 @@ try:
 except ImportError:
     from trollius import _overlapped
 
+from twisted.internet.iocpreactor import const
+
 
 class CompletionPort(object):
     """
@@ -20,6 +22,9 @@ class CompletionPort(object):
 
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
 
-        print(status)
+        if status is None:
+            # Trollius returns None, but the IOCP reactor wants something in
+            # the same struct.
+            return (const.WAIT_TIMEOUT, None, None, None)
 
         return status
