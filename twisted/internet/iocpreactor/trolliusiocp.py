@@ -36,11 +36,12 @@ class CompletionPort(object):
 
     def getEvent(self, timeout):
 
-        status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
+        try:
+            status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
+        except OSError as e:
+            return (e.winerror, None, None, None)
 
-        if status is None:
-            # Trollius returns None, but the IOCP reactor wants something in
-            # the same struct.
+        if not status:
             return (const.WAIT_TIMEOUT, None, None, None)
 
         status = list(status)

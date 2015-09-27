@@ -817,7 +817,6 @@ class ProcessTestsBuilder(ProcessTestsBuilderBase):
 
         def processFinished(finishedArgs):
             output, err, code = finishedArgs
-            print(err)
             output = output.split(b'\0')
             # Drop the trailing \0.
             output.pop()

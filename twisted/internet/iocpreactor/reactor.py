@@ -52,7 +52,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
                   _ThreadedWin32EventsMixin):
 
     port = None
-    
+
     def __init__(self):
         base.ReactorBase.__init__(self)
         self.port = _iocp.CompletionPort(self)
@@ -101,7 +101,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
         while 1:
             if rc == WAIT_TIMEOUT:
                 break
-            if key != KEY_WAKEUP:
+            if key != KEY_WAKEUP and key == KEY_NORMAL:
                 assert key == KEY_NORMAL
                 log.callWithLogger(evt.owner, self._callEventCallback,
                                    rc, bytes, evt)
