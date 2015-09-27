@@ -809,7 +809,7 @@ class ProcessTestsBuilder(ProcessTestsBuilderBase):
         args = [b'hello', b'"', b' \t|<>^&', br'"\\"hello\\"', br'"foo\ bar baz\""']
         # Ensure that all non-NUL characters can be passed too.
         if _PY3:
-            args.append("".join(map(chr, xrange(1,255))).encode("utf8"))
+            args.append("".join(map(chr, xrange(1,255))).encode('utf8'))
         else:
             args.append("".join(map(chr, xrange(1,255))))
 
@@ -817,6 +817,7 @@ class ProcessTestsBuilder(ProcessTestsBuilderBase):
 
         def processFinished(finishedArgs):
             output, err, code = finishedArgs
+            print(err)
             output = output.split(b'\0')
             # Drop the trailing \0.
             output.pop()

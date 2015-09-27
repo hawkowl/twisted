@@ -565,8 +565,8 @@ class Port(_SocketCloser, _LogOwner):
                 socket.SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
                 struct.pack('P', self.socket.fileno()))
 
-            rAddr = evt.newskt.getsockname()
-            lAddr = self.socket.getsockname()
+            rAddr = evt.newskt.getpeername()
+            lAddr = evt.newskt.getsockname()
             assert evt.newskt.family == self.addressFamily
 
             protocol = self.factory.buildProtocol(
