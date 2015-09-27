@@ -48,6 +48,9 @@ class CompletionPort(object):
 
         return status
 
+    def postEvent(self, bytes, key, event):
+        _overlapped.PostQueuedCompletionStatus(self.port, bytes, key, 0)
+
     def addHandle(self, handle, key):
         port = _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
 
@@ -70,7 +73,10 @@ def connect(socket, address, event):
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = (event, ov)
 
-    res = ov.ConnectEx(socket.fileno(), address)
+    try:
+        res = ov.ConnectEx(socket.fileno(), address)
+    except OSError as e:
+        res = e.winerror
 
     return res
 
@@ -81,7 +87,10 @@ def recv(socketFn, len, event, flags=0):
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = (event, ov)
 
-    res = ov.WSARecv(socketFn, len, flags)
+    try:
+        res = ov.WSARecv(socketFn, len, flags)
+    except OSError as e:
+        res = e.winerror
 
     return res
 
@@ -91,6 +100,9 @@ def send(socketFn, data, event, flags=0):
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = (event, ov)
 
-    res = ov.WSASend(socketFn, data, flags)
+    try:
+        res = ov.WSASend(socketFn, data, flags)
+    except OSError as e:
+        res = e.winerror
 
     return res
