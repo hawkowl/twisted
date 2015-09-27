@@ -308,15 +308,16 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
 
 
     def doConnect(self):
+        print('waht')
         if not hasattr(self, "connector"):
             # this happens if we connector.stopConnecting in
             # factory.startedConnecting
             return
-        assert _iocp.have_connectex
         self.reactor.addActiveHandle(self)
         evt = _iocp.Event(self.cbConnect, self)
 
-        rc = _iocp.connect(self.socket.fileno(), self.realAddress, evt)
+        rc = self.reactor.port.connect(self.socket, self.realAddress, evt)
+        
         if rc and rc != ERROR_IO_PENDING:
             self.cbConnect(rc, 0, evt)
 
@@ -576,21 +577,16 @@ class Port(_SocketCloser, _LogOwner):
 
     def doAccept(self):
 
-        import sys
-        from twisted.python.util import spewer
-        sys.settrace(spewer)
-
         evt = _iocp.Event(self.cbAccept, self)
-
         evt.newskt = self.reactor.createSocket(self.addressFamily,
                                                self.socketType)
 
-        print(_iocp.accept)
-        rc = _iocp.accept(self.socket, evt.newskt)
+        print(evt.newskt.fileno())
 
-        print('ho')
-        print("RET", rc)
+        rc = self.reactor.port.accept(self.socket, evt.newskt, evt)
 
-        if rc != ERROR_IO_PENDING:
+        print(rc)
+
+        if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)
 

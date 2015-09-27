@@ -14,7 +14,7 @@ import errno
 
 from twisted.internet.iocpreactor.const import ERROR_HANDLE_EOF
 from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
-from twisted.internet.iocpreactor import iocpsupport as _iocp
+from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
 
 
@@ -240,7 +240,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             # If there is currently less than SEND_LIMIT bytes left to send
             # in the string, extend it with the array data.
             self.dataBuffer = (buffer(self.dataBuffer, self.offset) +
-                               "".join(self._tempDataBuffer))
+                               b"".join(self._tempDataBuffer))
             self.offset = 0
             self._tempDataBuffer = []
             self._tempDataLen = 0
@@ -312,7 +312,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         self.reactor = reactor
         self._tempDataBuffer = [] # will be added to dataBuffer in doWrite
         self._tempDataLen = 0
-        self._readBuffers = [_iocp.AllocateReadBuffer(self.readBufferSize)]
+        self._readBuffers = []
 
 
     def connectionLost(self, reason):

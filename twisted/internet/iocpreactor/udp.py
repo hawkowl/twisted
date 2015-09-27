@@ -17,7 +17,8 @@ from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
 from twisted.internet.iocpreactor.const import ERROR_CONNECTION_REFUSED
 from twisted.internet.iocpreactor.const import ERROR_PORT_UNREACHABLE
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
-from twisted.internet.iocpreactor import iocpsupport as _iocp, abstract
+from twisted.internet.iocpreactor import abstract
+from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
 
 @implementer(IReadWriteHandle, interfaces.IListeningPort,

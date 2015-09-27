@@ -27,7 +27,8 @@ class CompletionPort(object):
     def __init__(self, reactor):
 
         self.reactor = reactor
-        self.ports = {}
+        self.events = {}
+        self.ports = []
 
         self.port = _overlapped.CreateIoCompletionPort(
             _overlapped.INVALID_HANDLE_VALUE, 0, 0, 0)
@@ -45,6 +46,9 @@ class CompletionPort(object):
             # the same struct.
             return (const.WAIT_TIMEOUT, None, None, None)
 
+        status = list(status)
+        status[3] = self.events.pop(status[3])[0]
+
         print(status)
 
         return status
@@ -53,15 +57,29 @@ class CompletionPort(object):
         port = _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
 
 
-def accept(listening, accepting):
+    def accept(self, listening, accepting, event):
 
-    ov = _overlapped.Overlapped(0)
-    try:
+        ov = _overlapped.Overlapped(0)
+        event.overlapped = ov
+        self.events[ov.address] = (event, ov)
+
+
+        print(dir(ov))
+        event.port = ov
+
         res = ov.AcceptEx(listening.fileno(), accepting.fileno())
+        # It only works if I yield it. WTF???????
 
-    except Exception as e:
-        print('exc', e)
-        res = e.errno
+        return res
 
-    print("done", res)
-    return res
+
+    def connect(self, socket, address, event):
+    
+
+        ov = _overlapped.Overlapped(0)
+        event.overlapped = ov
+        self.events[ov.address] = (event, ov)
+ 
+        res = ov.ConnectEx(socket.fileno(), address)
+
+        return res
