@@ -38,9 +38,6 @@ class CompletionPort(object):
 
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
 
-        print("GET Queues", status)
-
-
         if status is None:
             # Trollius returns None, but the IOCP reactor wants something in
             # the same struct.
@@ -49,37 +46,51 @@ class CompletionPort(object):
         status = list(status)
         status[3] = self.events.pop(status[3])[0]
 
-        print(status)
-
         return status
 
     def addHandle(self, handle, key):
         port = _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
 
 
-    def accept(self, listening, accepting, event):
+def accept(listening, accepting, event):
 
-        ov = _overlapped.Overlapped(0)
-        event.overlapped = ov
-        self.events[ov.address] = (event, ov)
+    ov = _overlapped.Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = (event, ov)
+    event.port = ov
 
+    res = ov.AcceptEx(listening.fileno(), accepting.fileno())
 
-        print(dir(ov))
-        event.port = ov
-
-        res = ov.AcceptEx(listening.fileno(), accepting.fileno())
-        # It only works if I yield it. WTF???????
-
-        return res
+    return res
 
 
-    def connect(self, socket, address, event):
-    
+def connect(socket, address, event):
 
-        ov = _overlapped.Overlapped(0)
-        event.overlapped = ov
-        self.events[ov.address] = (event, ov)
- 
-        res = ov.ConnectEx(socket.fileno(), address)
+    ov = _overlapped.Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = (event, ov)
 
-        return res
+    res = ov.ConnectEx(socket.fileno(), address)
+
+    return res
+
+
+def recv(socketFn, len, event, flags=0):
+
+    ov = _overlapped.Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = (event, ov)
+
+    res = ov.WSARecv(socketFn, len, flags)
+
+    return res
+
+def send(socketFn, data, event, flags=0):
+
+    ov = _overlapped.Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = (event, ov)
+
+    res = ov.WSASend(socketFn, data, flags)
+
+    return res

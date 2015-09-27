@@ -52,7 +52,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
                   _ThreadedWin32EventsMixin):
 
     port = None
-
+    
     def __init__(self):
         base.ReactorBase.__init__(self)
         self.port = _iocp.CompletionPort(self)

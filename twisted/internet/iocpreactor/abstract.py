@@ -8,6 +8,7 @@ Abstract file handle class
 from twisted.internet import main, error, interfaces
 from twisted.internet.abstract import _ConsumerMixin, _LogOwner
 from twisted.python import failure
+from twisted.python.compat import unicode, _PY3
 
 from zope.interface import implementer
 import errno
@@ -16,6 +17,15 @@ from twisted.internet.iocpreactor.const import ERROR_HANDLE_EOF
 from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
 from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
+
+def _semiBuffer(data, start=0, end=-1):
+
+    if end == -1:
+        end = len(data) - 1
+    if _PY3:
+        return data[start:end]
+    else:
+        return buffer(data, start, end)
 
 
 @implementer(interfaces.IPushProducer, interfaces.IConsumer,
@@ -65,26 +75,9 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         if not self._readSize:
             return self.reading
         size = self._readSize
-        full_buffers = size // self.readBufferSize
-        while self._readNextBuffer < full_buffers:
-            self.dataReceived(self._readBuffers[self._readNextBuffer])
-            self._readNextBuffer += 1
-            if not self.reading:
-                return False
-        remainder = size % self.readBufferSize
-        if remainder:
-            self.dataReceived(buffer(self._readBuffers[full_buffers],
-                                     0, remainder))
-        if self.dynamicReadBuffers:
-            total_buffer_size = self.readBufferSize * len(self._readBuffers)
-            # we have one buffer too many
-            if size < total_buffer_size - self.readBufferSize:
-                del self._readBuffers[-1]
-            # we filled all buffers, so allocate one more
-            elif (size == total_buffer_size and
-                  len(self._readBuffers) < self.maxReadBuffers):
-                self._readBuffers.append(_iocp.AllocateReadBuffer(
-                                            self.readBufferSize))
+        self.dataReceived(b"".join(self._readBuffers))
+
+        self._readBuffers = []
         self._readNextBuffer = 0
         self._readSize = 0
         return self.reading
@@ -115,6 +108,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
                                     (errno.errorcode.get(rc, 'unknown'), rc))))
             return False
         else:
+            self._readBuffers.append(evt.overlapped.getresult())
             assert self._readSize == 0
             assert self._readNextBuffer == 0
             self._readSize = bytes
@@ -123,9 +117,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
     def doRead(self):
         evt = _iocp.Event(self._cbRead, self)
-
-        evt.buff = buff = self._readBuffers
-        rc, bytes = self.readFromHandle(buff, evt)
+        rc = self.readFromHandle(self.readBufferSize, evt)
 
         if not rc or rc == ERROR_IO_PENDING:
             self._readScheduledInOS = True
@@ -133,7 +125,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             self._handleRead(rc, bytes, evt)
 
 
-    def readFromHandle(self, bufflist, evt):
+    def readFromHandle(self, len, evt):
         raise NotImplementedError() # TODO: this should default to ReadFile
 
 
@@ -146,7 +138,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
 
     # write stuff
-    dataBuffer = ''
+    dataBuffer = b''
     offset = 0
     writing = False
     _writeScheduled = None
@@ -212,7 +204,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             self.offset += bytes
             # If there is nothing left to send,
             if self.offset == len(self.dataBuffer) and not self._tempDataLen:
-                self.dataBuffer = ""
+                self.dataBuffer = b""
                 self.offset = 0
                 # stop writing
                 self.stopWriting()
@@ -236,11 +228,13 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
 
     def doWrite(self):
+
+        from twisted.internet.abstract import _concatenate
+
         if len(self.dataBuffer) - self.offset < self.SEND_LIMIT:
             # If there is currently less than SEND_LIMIT bytes left to send
             # in the string, extend it with the array data.
-            self.dataBuffer = (buffer(self.dataBuffer, self.offset) +
-                               b"".join(self._tempDataBuffer))
+            self.dataBuffer = _concatenate(self.dataBuffer, self.offset, self._tempDataBuffer)
             self.offset = 0
             self._tempDataBuffer = []
             self._tempDataLen = 0
@@ -249,12 +243,12 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
         # Send as much data as you can.
         if self.offset:
-            evt.buff = buff = buffer(self.dataBuffer, self.offset)
+            evt.buff = buff = _concatenate(self.dataBuffer, self.offset, [])
         else:
             evt.buff = buff = self.dataBuffer
-        rc, bytes = self.writeToHandle(buff, evt)
+        rc = self.writeToHandle(buff, evt)
         if rc and rc != ERROR_IO_PENDING:
-            self._handleWrite(rc, bytes, evt)
+            self._handleWrite(rc, len(buff), evt)
 
 
     def writeToHandle(self, buff, evt):
