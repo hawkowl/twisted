@@ -28,7 +28,7 @@ class CompletionPort(object):
         self.ports = []
 
         self.port = _overlapped.CreateIoCompletionPort(
-            _overlapped.INVALID_HANDLE_VALUE, 0, 0, 0)
+            0, 0, 0, 0)
 
 
     def getEvent(self, timeout):
@@ -60,7 +60,7 @@ def accept(listening, accepting, event):
     event.owner.reactor.port.events[ov.address] = (event, ov)
     event.port = ov
 
-    res = ov.AcceptEx(listening.fileno(), accepting.fileno())
+    res = ov.AcceptEx(listening, accepting)
 
     return res
 
@@ -72,7 +72,7 @@ def connect(socket, address, event):
     event.owner.reactor.port.events[ov.address] = (event, ov)
 
     try:
-        res = ov.ConnectEx(socket.fileno(), address)
+        res = ov.ConnectEx(socket, address)
     except OSError as e:
         res = e.winerror
 
