@@ -36,7 +36,7 @@ BOOL GetQueuedCompletionStatus(HANDLE, LPDWORD, PULONG_PTR, LPOVERLAPPED*);
 
 """)
 
-lib = ffi.dlopen(ctypes.util.find_library("c"))
+lib = ffi.dlopen(None)
 
 def GetQueuedCompletionStatus(port, timeout):
     lib.GetQueuedCompletionStatus()
