@@ -5,7 +5,9 @@ ffi.set_source("_overlapped",
 
                """
 #include <sys/types.h>
+
 #define WINDOWS_LEAN_AND_MEAN
+#include <basetsd.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mswsock.h>
