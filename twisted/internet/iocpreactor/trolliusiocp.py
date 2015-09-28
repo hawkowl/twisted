@@ -1,8 +1,5 @@
 
-try:
-    import _overlapped
-except ImportError:
-    from trollius import _overlapped
+from . import _overlapped
 
 import socket
 import struct
