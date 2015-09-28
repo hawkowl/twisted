@@ -17,7 +17,8 @@ from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
 from twisted.internet.iocpreactor.const import ERROR_CONNECTION_REFUSED
 from twisted.internet.iocpreactor.const import ERROR_PORT_UNREACHABLE
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
-from twisted.internet.iocpreactor import iocpsupport as _iocp, abstract
+from twisted.internet.iocpreactor import abstract
+from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
 
 @implementer(IReadWriteHandle, interfaces.IListeningPort,
@@ -55,11 +56,7 @@ class Port(abstract.FileHandle):
         abstract.FileHandle.__init__(self, reactor)
 
         skt = socket.socket(self.addressFamily, self.socketType)
-        addrLen = _iocp.maxAddrLen(skt.fileno())
         self.addressBuffer = _iocp.AllocateReadBuffer(addrLen)
-        # WSARecvFrom takes an int
-        self.addressLengthBuffer = _iocp.AllocateReadBuffer(
-                struct.calcsize('i'))
 
 
     def _setAddressFamily(self):
@@ -146,7 +143,7 @@ class Port(abstract.FileHandle):
                     (errno.errorcode.get(rc, 'unknown error'), rc))
         else:
             try:
-                self.protocol.datagramReceived(str(evt.buff[:bytes]),
+                self.protocol.datagramReceived(evt.buff[:bytes],
                     _iocp.makesockaddr(evt.addr_buff))
             except:
                 log.err()
@@ -158,6 +155,10 @@ class Port(abstract.FileHandle):
         evt.buff = buff = self._readBuffers[0]
         evt.addr_buff = addr_buff = self.addressBuffer
         evt.addr_len_buff = addr_len_buff = self.addressLengthBuffer
+
+        # The bindings don't support this yet
+        assert False, "No UDP support yet"
+
         rc, bytes = _iocp.recvfrom(self.getFileHandle(), buff,
                                    addr_buff, addr_len_buff, evt)
 

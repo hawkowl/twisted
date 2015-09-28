@@ -15,9 +15,9 @@ from twisted.internet.abstract import _LogOwner, isIPv6Address
 from twisted.internet.tcp import _SocketCloser, Connector as TCPConnector
 from twisted.internet.tcp import _AbortingMixin, _BaseBaseClient, _BaseTCPClient
 from twisted.python import log, failure, reflect
+from twisted.python.compat import unicode, _PY3
 
 from twisted.internet.iocpreactor import abstract
-
 from twisted.internet.iocpreactor import trolliusiocp as _iocp
 
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
@@ -31,6 +31,17 @@ try:
     from twisted.internet._newtls import startTLS as _startTLS
 except ImportError:
     _startTLS = None
+
+
+def _semiBuffer(data, start=0, end=-1):
+
+    if end == -1:
+        end = len(data) - 1
+    if _PY3:
+        return data[start:end]
+    else:
+        return buffer(data, start, end)
+
 
 # ConnectEx returns these. XXX: find out what it does for timeout
 connectExErrors = {
@@ -62,12 +73,11 @@ class Connection(abstract.FileHandle, _SocketCloser, _AbortingMixin):
 
 
     def dataReceived(self, rbuffer):
-        # XXX: some day, we'll have protocols that can handle raw buffers
-        self.protocol.dataReceived(str(rbuffer))
+        self.protocol.dataReceived(rbuffer)
 
 
-    def readFromHandle(self, bufflist, evt):
-        return _iocp.recv(self.getFileHandle(), bufflist, evt)
+    def readFromHandle(self, len, evt):
+        return _iocp.recv(self.getFileHandle(), len, evt)
 
 
     def writeToHandle(self, buff, evt):
@@ -76,7 +86,7 @@ class Connection(abstract.FileHandle, _SocketCloser, _AbortingMixin):
         sent is limited to a size of C{self.SEND_LIMIT}.
         """
         return _iocp.send(self.getFileHandle(),
-            buffer(buff, 0, self.SEND_LIMIT), evt)
+            _semiBuffer(buff, 0, self.SEND_LIMIT), evt)
 
 
     def _closeWriteConnection(self):
@@ -313,11 +323,10 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
             # this happens if we connector.stopConnecting in
             # factory.startedConnecting
             return
-        assert _iocp.have_connectex
         self.reactor.addActiveHandle(self)
         evt = _iocp.Event(self.cbConnect, self)
-
-        rc = _iocp.connect(self.socket.fileno(), self.realAddress, evt)
+        rc = _iocp.connect(self.socket, self.realAddress, evt)
+        
         if rc and rc != ERROR_IO_PENDING:
             self.cbConnect(rc, 0, evt)
 
@@ -555,9 +564,10 @@ class Port(_SocketCloser, _LogOwner):
             evt.newskt.setsockopt(
                 socket.SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
                 struct.pack('P', self.socket.fileno()))
-            family, lAddr, rAddr = _iocp.get_accept_addrs(evt.newskt.fileno(),
-                                                          evt.buff)
-            assert family == self.addressFamily
+
+            rAddr = evt.newskt.getpeername()
+            lAddr = evt.newskt.getsockname()
+            assert evt.newskt.family == self.addressFamily
 
             protocol = self.factory.buildProtocol(
                 self._addressType('TCP', rAddr[0], rAddr[1]))
@@ -575,12 +585,12 @@ class Port(_SocketCloser, _LogOwner):
 
 
     def doAccept(self):
+
         evt = _iocp.Event(self.cbAccept, self)
+        evt.newskt = self.reactor.createSocket(self.addressFamily,
+                                               self.socketType)
 
-        evt.newskt = newskt = self.reactor.createSocket(self.addressFamily,
-                                                        self.socketType)
-
-        rc = _iocp.accept(self.socket.fileno(), newskt.fileno(), buff, evt)
+        rc = _iocp.accept(self.socket, evt.newskt, evt)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)

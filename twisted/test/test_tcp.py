@@ -14,6 +14,8 @@ from zope.interface import implementer
 
 from twisted.trial import unittest
 
+from twisted.python.compat import _PY3
+from twisted.python.runtime import platform
 from twisted.python.log import msg, err
 from twisted.internet import protocol, reactor, defer, interfaces
 from twisted.internet import error
@@ -1150,11 +1152,17 @@ class ProperlyCloseFilesMixin:
         Return the errno expected to result from writing to a closed
         platform socket handle.
         """
-        # These platforms have been seen to give EBADF:
-        #
-        #  Linux 2.4.26, Linux 2.6.15, OS X 10.4, FreeBSD 5.4
-        #  Windows 2000 SP 4, Windows XP SP 2
-        return errno.EBADF
+        if _PY3 and platform.isWindows():
+            # These platforms have been seen to give WinError 10038
+            # Windows 10 on Python 3
+            return 10038
+        else:
+            # These platforms have been seen to give EBADF:
+            #
+            #  Linux 2.4.26, Linux 2.6.15, OS X 10.4, FreeBSD 5.4
+            #  Windows 2000 SP 4, Windows XP SP 2
+            return errno.EBADF
+
 
 
     def test_properlyCloseFiles(self):
