@@ -15,10 +15,7 @@ ffi.set_source("_overlapped",
 
                """)
 
-ffi.cdef("""
-BOOL GetQueuedCompletionStatus(HANDLE, LPDWORD, PULONG_PTR, LPOVERLAPPED*, DWORD);
-
-typedef struct _OVERLAPPED {
+ffi.cdef("""typedef struct _OVERLAPPED {
 #ifdef WORDS_BIGENDIAN
         ULONG_PTR InternalHigh;
         ULONG_PTR Internal;
@@ -40,6 +37,12 @@ typedef struct _OVERLAPPED {
         } DUMMYUNIONNAME;
          HANDLE hEvent;
 } OVERLAPPED, *LPOVERLAPPED;
+
+
+
+BOOL GetQueuedCompletionStatus(HANDLE, LPDWORD, PULONG_PTR, LPOVERLAPPED*);
+
+
 """)
 
 lib = ffi.dlopen(ctypes.util.find_library("c"))
