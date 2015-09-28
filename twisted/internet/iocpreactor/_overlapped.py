@@ -1,3 +1,4 @@
+import ctypes
 from cffi import FFI
 ffi = FFI()
 
@@ -29,7 +30,7 @@ ffi.cdef("""typedef struct _OVERLAPPED {
 } OVERLAPPED, *LPOVERLAPPED;
 
 
-
+HANDLE CreateIoCompletionPort(HANDLE, HANDLE, ULONG_PTR, DWORD);
 BOOL GetQueuedCompletionStatus(HANDLE, LPDWORD, PULONG_PTR, LPOVERLAPPED*);
 
 
@@ -39,3 +40,11 @@ lib = ffi.dlopen(ctypes.util.find_library("c"))
 
 def GetQueuedCompletionStatus(port, timeout):
     lib.GetQueuedCompletionStatus()
+
+def CreateIoCompletionPort(handle, port, key, concurrency):
+    """
+    returns a port
+    """
+    a = lib.CreateIoCompletionPort(handle, port, key, concurrency)
+    print(a)
+    return a
