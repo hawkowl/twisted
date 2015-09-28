@@ -16,22 +16,12 @@ ffi.set_source("_overlapped",
                """)
 
 ffi.cdef("""typedef struct _OVERLAPPED {
-#ifdef WORDS_BIGENDIAN
-        ULONG_PTR InternalHigh;
-        ULONG_PTR Internal;
-#else
         ULONG_PTR Internal;
         ULONG_PTR InternalHigh;
-#endif
         union {
             struct {
-#ifdef WORDS_BIGENDIAN
-                DWORD OffsetHigh;
-                DWORD Offset;
-#else
                 DWORD Offset;
                 DWORD OffsetHigh;
-#endif
             } DUMMYSTRUCTNAME;
             PVOID Pointer;
         } DUMMYUNIONNAME;
