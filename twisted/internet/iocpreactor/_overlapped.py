@@ -25,7 +25,11 @@ typedef struct sockaddr_in { ...;
 };
 typedef struct sockaddr_in6 { ...; };
 
-int initWS();
+
+typedef struct __WSABUF {
+    ULONG len;
+    char *buf;
+} WSABUF;
 
 static int initialize_function_pointers(void);
 
@@ -37,6 +41,8 @@ BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, intptr
 BOOL PostQueuedCompletionStatus(HANDLE port, DWORD bytes, ULONG_PTR key, OVERLAPPED *ov);
 
 BOOL Tw_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
+
+int WSARecv(HANDLE, struct __WSABUF* buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, OVERLAPPED *ov, void *crud);
 
 int WSAGetLastError(void);
 
@@ -56,18 +62,6 @@ ffi.set_source("_overlapped2",
 
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "ws2_32.lib")
-
-int initWS()
-{
-    WSADATA wsa;
-
-    if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-    {
-        return 1;
-    }
-    
-    return 0;
-}
 
 HANDLE getInvalidHandle() {
     return INVALID_HANDLE_VALUE;
@@ -119,7 +113,6 @@ NULL = ffi.NULL
 
 from _overlapped2 import ffi, lib
 
-lib.initWS()
 lib.initialize_function_pointers()
 
 def parse_address(socket, address):
@@ -149,9 +142,6 @@ def GetQueuedCompletionStatus(port, timeout):
         rc = ffi.getwinerror()[0]
 
     rval = (rc, b[0], key[0], int(ov[0]))
-
-
-
     return rval
 
 def CreateIoCompletionPort(handle, port, key, concurrency):
@@ -186,11 +176,15 @@ class Overlapped(object):
         assert handle == 0
         self._ov = ffi.new("OVERLAPPED*")
 
+        self._buffer = None
+        self._wsabuf = None
+
     @property
     def address(self):
 
         addr = int(ffi.cast("intptr_t", self._ov))
         return addr
+
 
     def AcceptEx(self, listen, accept):
 
@@ -236,3 +230,39 @@ class Overlapped(object):
             return ffi.getwinerror()[0]
 
         return res
+
+    def WSARecv(self, socket, length, flags=0):
+
+        #int WSARecv(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
+        #    DWORD *flags, OVERLAPPED *ov, void *crud)
+
+        print(socket)
+        print(length)
+
+        wsabuf = ffi.new("WSABUF*")
+
+        buff = ffi.new("char [" + str(length) + "]")
+
+        wsabuf[0].len = length
+        wsabuf[0].buf = ffi.addressof(buff)
+
+        self._buffer = buff
+        self._wsabuf = wsabuf
+
+        read = ffi.new("DWORD*")
+        
+        _flags = ffi.new("DWORD*")
+        _flags[0] = flags
+
+        bufflen = ffi.new("DWORD*")
+        bufflen[0] = 1
+
+        res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
+
+        if not res:
+            return ffi.getwinerror()[0]
+
+        return res
+
+
+    def WSASend(self, socket, data, flags=0)

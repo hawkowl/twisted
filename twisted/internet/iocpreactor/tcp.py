@@ -292,7 +292,7 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
 
     def cbConnect(self, rc, bytes, evt):
         print("CBCONNECT", rc, bytes, evt)
-        if rc:
+        if rc > 1:
             rc = connectExErrors.get(rc, rc)
             self.failIfNotConnected(error.getConnectError((rc,
                                     errno.errorcode.get(rc, 'Unknown error'))))

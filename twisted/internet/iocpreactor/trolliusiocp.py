@@ -95,7 +95,7 @@ def recvfrom(socketFn, len, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
-    event.owner.reactor.port.events[ov.address] = (event, ov)
+    event.owner.reactor.port.events[ov.address] = event
 
     try:
         res = ov.WSARecv(socketFn, len, flags)
@@ -109,7 +109,7 @@ def send(socketFn, data, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
-    event.owner.reactor.port.events[ov.address] = (event, ov)
+    event.owner.reactor.port.events[ov.address] = event
 
     try:
         res = ov.WSASend(socketFn, data, flags)

@@ -83,20 +83,21 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         return self.reading
 
 
-    def _cbRead(self, rc, bytes, evt):
+    def _cbRead(self, rc, _bytes, evt):
         self._readScheduledInOS = False
-        if self._handleRead(rc, bytes, evt):
+        if self._handleRead(rc, _bytes, evt):
             self.doRead()
 
 
-    def _handleRead(self, rc, bytes, evt):
+    def _handleRead(self, rc, _bytes, evt):
         """
         Returns False if we should stop reading for now
         """
+        print("READ", rc, _bytes)
         if self.disconnected:
             return False
         # graceful disconnection
-        if (not (rc or bytes)) or rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
+        if (not (rc or _bytes)) or rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
             self.reactor.removeActiveHandle(self)
             self.readConnectionLost(failure.Failure(main.CONNECTION_DONE))
             return False
@@ -111,7 +112,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             self._readBuffers.append(evt.overlapped.getresult())
             assert self._readSize == 0
             assert self._readNextBuffer == 0
-            self._readSize = bytes
+            self._readSize = _bytes
             return self._dispatchData()
 
 
@@ -119,10 +120,10 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         evt = _iocp.Event(self._cbRead, self)
         rc = self.readFromHandle(self.readBufferSize, evt)
 
-        if not rc or rc == ERROR_IO_PENDING:
+        if rc and rc == ERROR_IO_PENDING:
             self._readScheduledInOS = True
         else:
-            self._handleRead(rc, bytes, evt)
+            self._handleRead(rc, b"", evt)
 
 
     def readFromHandle(self, len, evt):
