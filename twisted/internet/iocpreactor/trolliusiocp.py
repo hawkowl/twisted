@@ -15,6 +15,9 @@ class Event(object):
         for k, v in kw.items():
             setattr(self, k, v)
 
+    def __repr__(self):
+        return "<event cb={} owner={}>".format(self.callback, self.owner)
+
 
 class CompletionPort(object):
     """
@@ -28,21 +31,21 @@ class CompletionPort(object):
         self.ports = []
 
         self.port = _overlapped.CreateIoCompletionPort(
-            0, 0, 0, 0)
+            None, 0, 0, 0)
 
 
     def getEvent(self, timeout):
-
-        try:
-            status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
-        except OSError as e:
-            return (e.winerror, None, None, None)
-
-        if not status:
-            return (const.WAIT_TIMEOUT, None, None, None)
-
+        status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
         status = list(status)
-        status[3] = self.events.pop(status[3])[0]
+
+
+        if status[0] != 0:
+            print("TICK", status)
+            print("TICK", list(self.events.items()))
+
+        if status[3] in self.events.keys():
+            print(status[3])
+            status[3] = self.events.pop(status[3])
 
         return status
 
@@ -50,17 +53,20 @@ class CompletionPort(object):
         _overlapped.PostQueuedCompletionStatus(self.port, bytes, key, 0)
 
     def addHandle(self, handle, key):
-        port = _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
+        _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
 
 
 def accept(listening, accepting, event):
 
     ov = _overlapped.Overlapped(0)
+    res = ov.AcceptEx(listening, accepting)
+
     event.overlapped = ov
-    event.owner.reactor.port.events[ov.address] = (event, ov)
+    event.owner.reactor.port.events[ov.address] = event
     event.port = ov
 
-    res = ov.AcceptEx(listening, accepting)
+
+    print("ACCEPTEX", res)
 
     return res
 
@@ -68,13 +74,12 @@ def accept(listening, accepting, event):
 def connect(socket, address, event):
 
     ov = _overlapped.Overlapped(0)
-    event.overlapped = ov
-    event.owner.reactor.port.events[ov.address] = (event, ov)
+    res = ov.ConnectEx(socket, address)
 
-    try:
-        res = ov.ConnectEx(socket, address)
-    except OSError as e:
-        res = e.winerror
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+
+    print("CONNECTEX", res)
 
     return res
 
@@ -83,7 +88,7 @@ def recv(socketFn, len, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
-    event.owner.reactor.port.events[ov.address] = (event, ov)
+    event.owner.reactor.port.events[ov.address] = event
 
     try:
         res = ov.WSARecv(socketFn, len, flags)

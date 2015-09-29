@@ -101,7 +101,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
         while 1:
             if rc == WAIT_TIMEOUT:
                 break
-            if key != KEY_WAKEUP and key == KEY_NORMAL:
+            if key != KEY_WAKEUP:
                 assert key == KEY_NORMAL
                 log.callWithLogger(evt.owner, self._callEventCallback,
                                    rc, bytes, evt)

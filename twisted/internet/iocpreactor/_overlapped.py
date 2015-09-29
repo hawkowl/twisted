@@ -15,9 +15,15 @@ typedef unsigned long DWORD;
 typedef size_t ULONG_PTR;
 typedef int BOOL;
 
+typedef struct _IN_ADDR { ...; } IN_ADDR;
+
 typedef struct _OVERLAPPED { ...; } OVERLAPPED;
 typedef struct sockaddr { ...; };
-typedef struct sockaddr_in { ...; short   sin_family; };
+typedef struct sockaddr_in { ...;
+  short sin_family;
+  unsigned short sin_port;
+  char sin_addr[4];
+};
 typedef struct sockaddr_in6 { ...; };
 
 int initWS();
@@ -26,12 +32,17 @@ static int initialize_function_pointers(void);
 
 BOOL AcceptEx(HANDLE, HANDLE, char*, DWORD, DWORD, DWORD, LPDWORD, OVERLAPPED*);
 
-BOOL CreateIoCompletionPort(HANDLE* fileHandle, HANDLE existing, ULONG_PTR key, DWORD numThreads);
-BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, OVERLAPPED **ov, DWORD timeout);
+HANDLE CreateIoCompletionPort(HANDLE fileHandle, HANDLE existing, ULONG_PTR key, DWORD numThreads);
+BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, intptr_t *overlapped, DWORD timeout);
 BOOL PostQueuedCompletionStatus(HANDLE port, DWORD bytes, ULONG_PTR key, OVERLAPPED *ov);
 
 
-BOOL Py_ConnectEx(HANDLE, const sockaddr, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
+BOOL Py_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
+BOOL Py_ConnectEx6(HANDLE, struct sockaddr_in6*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
+
+int WSAGetLastError(void);
+
+HANDLE getInvalidHandle();
 """)
 
 ffi.set_source("_overlapped2",
@@ -60,9 +71,16 @@ int initWS()
     return 0;
 }
 
+HANDLE getInvalidHandle() {
+    return INVALID_HANDLE_VALUE;
+}
+
 static LPFN_ACCEPTEX Py_AcceptEx = NULL;
 static LPFN_CONNECTEX Py_ConnectEx = NULL;
 static LPFN_DISCONNECTEX Py_DisconnectEx = NULL;
+
+#define Py_ConnectEx4 Py_ConnectEx;
+#define Py_ConnectEx6 Py_ConnectEx;
 
 #define GET_WSA_POINTER(s, x)                                           \
     (SOCKET_ERROR != WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,    \
@@ -75,7 +93,6 @@ initialize_function_pointers(void)
     GUID GuidAcceptEx = WSAID_ACCEPTEX;
     GUID GuidConnectEx = WSAID_CONNECTEX;
     GUID GuidDisconnectEx = WSAID_DISCONNECTEX;
-    HINSTANCE hKernel32;
     SOCKET s;
     DWORD dwBytes;
 
@@ -98,6 +115,8 @@ initialize_function_pointers(void)
 
 ffi.compile()
 
+NULL = ffi.NULL
+
 
 from _overlapped2 import ffi, lib
 
@@ -106,53 +125,57 @@ lib.initialize_function_pointers()
 
 def parse_address(socket, address):
 
+    from socket import inet_aton
+
     if socket.family == AF_INET:
 
         addr = ffi.new("struct sockaddr_in*")
 
         addr.sin_family = AF_INET
+        addr.sin_port = address[1]
+        addr.sin_addr = inet_aton(address[0])
 
-
-    print(addr)
+    print(addr[0])
 
     return addr
 
 def GetQueuedCompletionStatus(port, timeout):
 
-    o = Overlapped(0)
-
     key = ffi.new("ULONG_PTR*")
     b = ffi.new("DWORD*")
 
-    res = lib.GetQueuedCompletionStatus(port, b, key, o._ov, 0)
+    ov = ffi.new("intptr_t*")
 
-    if not res:
-        return None
+    rc = lib.GetQueuedCompletionStatus(port, b, key, ov, timeout)
 
+    if not rc:
+        rc = ffi.getwinerror()[0]
 
-    return (wait[0], None, None, o)
+    rval = (rc, b[0], key[0], int(ov[0]))
+    return rval
 
 def CreateIoCompletionPort(handle, port, key, concurrency):
     """
     returns a port
     """
-
-    if not handle:
-        h = ffi.new("HANDLE*")
     if isinstance(handle, int):
-        h = ffi.new("HANDLE*", handle)
-        print(port)
-        print(h)
+        h = handle
+    else:
+        h = lib.getInvalidHandle()
 
-    a = lib.CreateIoCompletionPort(h, port, 0, 0)
+    a = lib.CreateIoCompletionPort(h, port, key, concurrency)
 
-    return h[0]
+    if not a:
+        raise Exception(ffi.getwinerror())
+    return a
 
 def PostQueuedCompletionStatus(port, bytes, key, whatever):
-
     o = Overlapped(0)
+    a = lib.PostQueuedCompletionStatus(port, bytes, key, o._ov)
 
-    a = lib.PostQueuedCompletionStatus(port, bytes, key, o._ov[0])
+    if not a:
+        raise Exception(ffi.getwinerror())
+
     return a
 
 
@@ -160,17 +183,18 @@ class Overlapped(object):
 
     def __init__(self, handle):
         assert handle == 0
-
-        self._ov = ffi.new("OVERLAPPED**")
+        self._ov = ffi.new("OVERLAPPED*")
 
     @property
     def address(self):
-        return self._ov
-    
+
+        addr = int(ffi.cast("intptr_t", self._ov))
+        print("ADDR FETCHED", addr)
+        return addr
 
     def AcceptEx(self, listen, accept):
 
-        size = (ffi.sizeof("struct sockaddr_in6") + 16) * 2
+        size = (ffi.sizeof("struct sockaddr_in6") + 16)
 
         buf = ffi.new("char[" + str(size) + "]")
 
@@ -178,12 +202,18 @@ class Overlapped(object):
         recvDesired = 0
         sizeOf = size
 
-
         res = lib.AcceptEx(
             listen.fileno(), accept.fileno(),
             ffi.addressof(buf),
-            0, size, size, recv, self._ov[0]
-            )   
+            0, size, size, recv, self._ov
+        )   
+
+        print("ACCEPTEX", ffi.getwinerror())
+        print(ffi.string(buf))
+
+        if not res:
+            print(ffi.getwinerror())
+            return ffi.getwinerror()[0]
 
         return res
 
@@ -193,13 +223,25 @@ class Overlapped(object):
 
         length = ffi.sizeof(addr)
 
-        res = lib.Py_ConnectEx(
+        print(socket.family)
 
+        if socket.family == AF_INET:
+            func = lib.Py_ConnectEx4
+        elif socket.family == AF_INET6:
+            func = lib.Py_ConnectEx6
+
+        res = func(
             socket.fileno(),
-            addr[0],
+            addr,
             length,
-            0, 0, 0, self._ov[0]
-
+            ffi.NULL, 0, ffi.NULL, self._ov
         )   
+
+        print("ConnectEx err", ffi.errno)
+        print("ConnectEx", res)
+
+        if not res:
+            print(ffi.getwinerror())
+            return ffi.getwinerror()[0]
 
         return res
