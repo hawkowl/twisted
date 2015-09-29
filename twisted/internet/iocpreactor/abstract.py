@@ -110,6 +110,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             return False
         else:
             self._readBuffers.append(evt.overlapped.getresult())
+            print(self._readBuffers)
             assert self._readSize == 0
             assert self._readNextBuffer == 0
             self._readSize = _bytes

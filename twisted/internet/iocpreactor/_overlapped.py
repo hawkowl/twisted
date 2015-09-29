@@ -140,6 +140,8 @@ def GetQueuedCompletionStatus(port, timeout):
 
     if not rc:
         rc = ffi.getwinerror()[0]
+    else:
+        rc = 0
 
     rval = (rc, b[0], key[0], int(ov[0]))
     return rval
@@ -178,6 +180,9 @@ class Overlapped(object):
 
         self._buffer = None
         self._wsabuf = None
+
+    def getresult(self):
+        self._ov
 
     @property
     def address(self):
@@ -259,10 +264,12 @@ class Overlapped(object):
 
         res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
 
-        if not res:
-            return ffi.getwinerror()[0]
+        
+        return ffi.getwinerror()[0]
 
         return res
 
 
-    def WSASend(self, socket, data, flags=0)
+    def WSASend(self, socket, data, flags=0):
+
+        pass
