@@ -99,12 +99,16 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
             timeout = min(MAX_TIMEOUT, int(1000*timeout))
         rc, bytes, key, evt = self.port.getEvent(timeout)
         while 1:
+            print("*****", rc, bytes, key, evt)
             if rc == WAIT_TIMEOUT:
                 break
             if key != KEY_WAKEUP:
+                print("evt1")
                 assert key == KEY_NORMAL
+                print('evt2')
                 log.callWithLogger(evt.owner, self._callEventCallback,
                                    rc, bytes, evt)
+                print('evt3')
                 processed_events += 1
             if processed_events >= EVENTS_PER_LOOP:
                 break
@@ -139,6 +143,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
 
 
     def registerHandle(self, handle):
+        print("REGISTERING", handle)
         self.port.addHandle(handle, KEY_NORMAL)
 
 

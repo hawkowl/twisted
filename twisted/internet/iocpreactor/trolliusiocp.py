@@ -38,19 +38,17 @@ class CompletionPort(object):
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
         status = list(status)
 
-
         if status[0] != 0:
             print("TICK", status)
-            print("TICK", list(self.events.items()))
+            print("TICK", [(key, val.callback) for key,val in self.events.items()])
 
         if status[3] in self.events.keys():
-            print(status[3])
             status[3] = self.events.pop(status[3])
 
         return status
 
-    def postEvent(self, bytes, key, event):
-        _overlapped.PostQueuedCompletionStatus(self.port, bytes, key, 0)
+    def postEvent(self, b, key, event):
+        _overlapped.PostQueuedCompletionStatus(self.port, b, key, 0)
 
     def addHandle(self, handle, key):
         _overlapped.CreateIoCompletionPort(handle, self.port, key, 0)
@@ -65,9 +63,6 @@ def accept(listening, accepting, event):
     event.owner.reactor.port.events[ov.address] = event
     event.port = ov
 
-
-    print("ACCEPTEX", res)
-
     return res
 
 
@@ -78,8 +73,6 @@ def connect(socket, address, event):
 
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
-
-    print("CONNECTEX", res)
 
     return res
 
@@ -96,6 +89,7 @@ def recv(socketFn, len, event, flags=0):
         res = e.winerror
 
     return res
+
 
 def recvfrom(socketFn, len, event, flags=0):
 
