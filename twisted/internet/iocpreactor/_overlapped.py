@@ -40,9 +40,12 @@ HANDLE CreateIoCompletionPort(HANDLE fileHandle, HANDLE existing, ULONG_PTR key,
 BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, intptr_t *overlapped, DWORD timeout);
 BOOL PostQueuedCompletionStatus(HANDLE port, DWORD bytes, ULONG_PTR key, OVERLAPPED *ov);
 
+BOOL GetOverlappedResult(HANDLE, OVERLAPPED *ov, LPDWORD, BOOL);
+
 BOOL Tw_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
 
 int WSARecv(HANDLE, struct __WSABUF* buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, OVERLAPPED *ov, void *crud);
+int WSASend(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD flags, OVERLAPPED *ov, void *crud);
 
 int WSAGetLastError(void);
 
@@ -177,12 +180,14 @@ class Overlapped(object):
     def __init__(self, handle):
         assert handle == 0
         self._ov = ffi.new("OVERLAPPED*")
-
         self._buffer = None
         self._wsabuf = None
+        self._handle = None
 
-    def getresult(self):
-        self._ov
+
+    def getresult(self, wait=False):
+
+        return ffi.string(self._buffer)
 
     @property
     def address(self):
@@ -192,6 +197,8 @@ class Overlapped(object):
 
 
     def AcceptEx(self, listen, accept):
+
+        self._handle = accept
 
         size = ffi.sizeof("struct sockaddr_in6") + 16
         print(size)
@@ -213,6 +220,8 @@ class Overlapped(object):
         return res
 
     def ConnectEx(self, socket, address):
+
+        self._handle = socket
 
         print("ATTEMPTING TO CONNECT", address)
 
@@ -240,9 +249,8 @@ class Overlapped(object):
 
         #int WSARecv(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
         #    DWORD *flags, OVERLAPPED *ov, void *crud)
-
-        print(socket)
-        print(length)
+    
+        self._handle = socket
 
         wsabuf = ffi.new("WSABUF*")
 
@@ -264,12 +272,36 @@ class Overlapped(object):
 
         res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
 
-        
-        return ffi.getwinerror()[0]
+        if not res:
+            return ffi.getwinerror()[0]
 
         return res
 
-
     def WSASend(self, socket, data, flags=0):
+        # nt WSASend(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
+        # DWORD flags, OVERLAPPED *ov, void *crud)
+        
 
-        pass
+        self._handle = socket
+
+        wsabuf = ffi.new("WSABUF*")
+
+        buff = ffi.new("char [" + str(len(data)) + "]", data)
+
+        wsabuf[0].len = len(data)
+        wsabuf[0].buf = ffi.addressof(buff)
+
+        self._buffer = buff
+        self._wsabuf = wsabuf
+
+        _flags = ffi.new("DWORD*")
+        _flags[0] = flags
+
+        bytesSent = ffi.new("DWORD*")
+
+        res = lib.WSARecv(socket, wsabuf, 1, bytesSent, _flags, self._ov, NULL)
+
+        if not res:
+            return ffi.getwinerror()[0]
+
+        return res
