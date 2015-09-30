@@ -190,8 +190,11 @@ class Overlapped(object):
 
 
     def getresult(self, wait=False):
+
         print("GETTING RESULT OF", self.address)
-        return ffi.buffer(self._buffer)
+        f =  ffi.buffer(self._buffer)
+        self.buffer = None
+        return f
 
     @property
     def address(self):

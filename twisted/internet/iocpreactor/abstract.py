@@ -7,7 +7,7 @@ Abstract file handle class
 
 from twisted.internet import main, error, interfaces
 from twisted.internet.abstract import _ConsumerMixin, _LogOwner
-from twisted.python import failure
+from twisted.python import failure, log
 from twisted.python.compat import unicode, _PY3
 
 from zope.interface import implementer
@@ -75,19 +75,19 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         if not self._readSize:
             return self.reading
         size = self._readSize
-        self.dataReceived(b"".join(self._readBuffers))
 
+        content = b"".join(self._readBuffers)
         self._readBuffers = []
         self._readNextBuffer = 0
         self._readSize = 0
+
+        self.dataReceived(content)
+
         return self.reading
 
 
     def _cbRead(self, rc, _bytes, evt):
-        print("****CBREAD")
-        print("R1", self._readScheduledInOS)
         self._readScheduledInOS = False
-        print("R2", self._readScheduledInOS)
         if self._handleRead(rc, _bytes, evt):
             self.doRead()
 
@@ -96,12 +96,11 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         """
         Returns False if we should stop reading for now
         """
-        print("handling READ", rc, _bytes)
         if self.disconnected:
             return False
 
         # graceful disconnection
-        if (not (rc or _bytes)) or rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
+        if rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
             self.reactor.removeActiveHandle(self)
             self.readConnectionLost(failure.Failure(main.CONNECTION_DONE))
             return False
@@ -114,8 +113,6 @@ class FileHandle(_ConsumerMixin, _LogOwner):
                                     (errno.errorcode.get(rc, 'unknown'), rc))))
             return False
         else:
-            print("RC", rc)
-            print("ADDING", evt.overlapped.getresult())
             self._readBuffers.append(
                 evt.overlapped.getresult()[0:_bytes])
             assert self._readSize == 0, self._readBuffers
@@ -126,13 +123,10 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
     def doRead(self):
         evt = _iocp.Event(self._cbRead, self)
-        print("****CALLING DOREAD", self._readScheduledInOS)
         try:
             bytesRead = self.readFromHandle(self.readBufferSize, evt)
         except Exception as e:
-            raise e
-
-        print("READ", bytesRead)
+            return self._handleRead(e.args[0], 0, evt)
 
         if bytesRead == -1:
             print("SETTING AS READ", self._readScheduledInOS)
