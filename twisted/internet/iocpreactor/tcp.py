@@ -290,8 +290,8 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
         self.reactor.removeActiveHandle(self)
 
 
-    def cbConnect(self, rc, bytes, evt):
-        print("CBCONNECT", rc, bytes, evt)
+    def cbConnect(self, rc, _bytes, evt):
+
         if rc > 1:
             rc = connectExErrors.get(rc, rc)
             self.failIfNotConnected(error.getConnectError((rc,
@@ -458,7 +458,6 @@ class Port(_SocketCloser, _LogOwner):
         # Make sure that if we listened on port 0, we update that to
         # reflect what the OS actually assigned us.
         self._realPortNumber = skt.getsockname()[1]
-        print("REALNAME", self._realPortNumber)
 
         log.msg("%s starting on %s" % (self._getLogPrefix(self.factory),
                                        self._realPortNumber))
@@ -555,7 +554,6 @@ class Port(_SocketCloser, _LogOwner):
 
     def handleAccept(self, rc, evt):
 
-        print("CBACCT*******", rc, bytes, evt)
         if self.disconnecting or self.disconnected:
             return False
 
@@ -597,6 +595,5 @@ class Port(_SocketCloser, _LogOwner):
 
         rc = _iocp.accept(self.socket, evt.newskt, evt)
 
-        print("doaccept", rc)
         if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)

@@ -84,7 +84,10 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
 
     def _cbRead(self, rc, _bytes, evt):
+        print("****CBREAD")
+        print("R1", self._readScheduledInOS)
         self._readScheduledInOS = False
+        print("R2", self._readScheduledInOS)
         if self._handleRead(rc, _bytes, evt):
             self.doRead()
 
@@ -93,14 +96,16 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         """
         Returns False if we should stop reading for now
         """
-        print("READ", rc, _bytes)
+        print("handling READ", rc, _bytes)
         if self.disconnected:
             return False
+
         # graceful disconnection
         if (not (rc or _bytes)) or rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
             self.reactor.removeActiveHandle(self)
             self.readConnectionLost(failure.Failure(main.CONNECTION_DONE))
             return False
+
         # XXX: not handling WSAEWOULDBLOCK
         # ("too many outstanding overlapped I/O requests")
         elif rc:
@@ -109,9 +114,11 @@ class FileHandle(_ConsumerMixin, _LogOwner):
                                     (errno.errorcode.get(rc, 'unknown'), rc))))
             return False
         else:
-            self._readBuffers.append(evt.overlapped.getresult())
-            print(self._readBuffers)
-            assert self._readSize == 0
+            print("RC", rc)
+            print("ADDING", evt.overlapped.getresult())
+            self._readBuffers.append(
+                evt.overlapped.getresult()[0:_bytes])
+            assert self._readSize == 0, self._readBuffers
             assert self._readNextBuffer == 0
             self._readSize = _bytes
             return self._dispatchData()
@@ -119,12 +126,20 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
     def doRead(self):
         evt = _iocp.Event(self._cbRead, self)
-        rc = self.readFromHandle(self.readBufferSize, evt)
+        print("****CALLING DOREAD", self._readScheduledInOS)
+        try:
+            bytesRead = self.readFromHandle(self.readBufferSize, evt)
+        except Exception as e:
+            raise e
 
-        if rc and rc == ERROR_IO_PENDING:
+        print("READ", bytesRead)
+
+        if bytesRead == -1:
+            print("SETTING AS READ", self._readScheduledInOS)
             self._readScheduledInOS = True
+            print("SETTING AS READ", self._readScheduledInOS)
         else:
-            self._handleRead(rc, b"", evt)
+            self._handleRead(0, bytesRead, evt)
 
 
     def readFromHandle(self, len, evt):
@@ -184,17 +199,18 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         self.doWrite()
 
 
-    def _cbWrite(self, rc, bytes, evt):
-        if self._handleWrite(rc, bytes, evt):
+    def _cbWrite(self, rc, _bytes, evt):
+        if self._handleWrite(rc, _bytes, evt):
             self.doWrite()
 
 
-    def _handleWrite(self, rc, bytes, evt):
+    def _handleWrite(self, rc, _bytes, evt):
         """
         Returns false if we should stop writing for now
         """
         if self.disconnected or self._writeDisconnected:
             return False
+
         # XXX: not handling WSAEWOULDBLOCK
         # ("too many outstanding overlapped I/O requests")
         if rc:
@@ -203,7 +219,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
                                     (errno.errorcode.get(rc, 'unknown'), rc))))
             return False
         else:
-            self.offset += bytes
+            self.offset += _bytes
             # If there is nothing left to send,
             if self.offset == len(self.dataBuffer) and not self._tempDataLen:
                 self.dataBuffer = b""
@@ -248,9 +264,11 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             evt.buff = buff = _concatenate(self.dataBuffer, self.offset, [])
         else:
             evt.buff = buff = self.dataBuffer
+
         rc = self.writeToHandle(buff, evt)
-        if rc and rc != ERROR_IO_PENDING:
-            self._handleWrite(rc, len(buff), evt)
+
+        if rc is not -1:
+            self._handleWrite(0, rc, evt)
 
 
     def writeToHandle(self, buff, evt):
@@ -258,7 +276,8 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
 
     def write(self, data):
-        """Reliably write some data.
+        """
+        Reliably write some data.
 
         The data is buffered until his file descriptor is ready for writing.
         """

@@ -147,6 +147,10 @@ def GetQueuedCompletionStatus(port, timeout):
         rc = 0
 
     rval = (rc, b[0], key[0], int(ov[0]))
+
+    if rc != 258:
+        print("TICK", *rval)
+
     return rval
 
 def CreateIoCompletionPort(handle, port, key, concurrency):
@@ -186,8 +190,8 @@ class Overlapped(object):
 
 
     def getresult(self, wait=False):
-
-        return ffi.string(self._buffer)
+        print("GETTING RESULT OF", self.address)
+        return ffi.buffer(self._buffer)
 
     @property
     def address(self):
@@ -272,21 +276,22 @@ class Overlapped(object):
 
         res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
 
-        if not res:
-            return ffi.getwinerror()[0]
-
-        return res
+        if res == 0:
+            print("I READ", read[0])
+            return read[0]
+        elif ffi.getwinerror()[0] == 997:
+            return -1
+        else:
+            raise Exception(ffi.getwinerror())
 
     def WSASend(self, socket, data, flags=0):
         # nt WSASend(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
         # DWORD flags, OVERLAPPED *ov, void *crud)
-        
-
         self._handle = socket
 
         wsabuf = ffi.new("WSABUF*")
 
-        buff = ffi.new("char [" + str(len(data)) + "]", data)
+        buff = ffi.new("char [" + str(len(data)+1) + "]", data)
 
         wsabuf[0].len = len(data)
         wsabuf[0].buf = ffi.addressof(buff)
@@ -299,9 +304,11 @@ class Overlapped(object):
 
         bytesSent = ffi.new("DWORD*")
 
-        res = lib.WSARecv(socket, wsabuf, 1, bytesSent, _flags, self._ov, NULL)
+        res = lib.WSASend(socket, wsabuf, 1, bytesSent, flags, self._ov, NULL)
 
-        if not res:
-            return ffi.getwinerror()[0]
-
-        return res
+        if res == 0:
+            return bytesSent[0]
+        elif ffi.getwinerror()[0] == 997:
+            return -1
+        else:
+            raise Exception(ffi.getwinerror())

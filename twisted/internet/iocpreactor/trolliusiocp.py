@@ -38,10 +38,6 @@ class CompletionPort(object):
         status = _overlapped.GetQueuedCompletionStatus(self.port, timeout)
         status = list(status)
 
-        if status[0] != 0:
-            print("TICK", status)
-            print("TICK", [(key, val.callback) for key,val in self.events.items()])
-
         if status[3] in self.events.keys():
             status[3] = self.events.pop(status[3])
 
@@ -91,17 +87,13 @@ def recv(socketFn, len, event, flags=0):
     return res
 
 
-def recvfrom(socketFn, len, event, flags=0):
+def recvfrom(socketFn, length, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
-    try:
-        res = ov.WSARecv(socketFn, len, flags)
-    except OSError as e:
-        res = e.winerror
-
+    res = ov.WSARecv(socketFn, length, flags)
     return res
 
 
@@ -111,9 +103,6 @@ def send(socketFn, data, event, flags=0):
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
-    try:
-        res = ov.WSASend(socketFn, data, flags)
-    except OSError as e:
-        res = e.winerror
+    res = ov.WSASend(socketFn, data, flags)
 
     return res

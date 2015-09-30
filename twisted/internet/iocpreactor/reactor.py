@@ -139,7 +139,6 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
 
 
     def registerHandle(self, handle):
-        print("REGISTERING", handle)
         self.port.addHandle(handle, KEY_NORMAL)
 
 
