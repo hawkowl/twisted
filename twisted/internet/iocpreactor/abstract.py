@@ -123,17 +123,13 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
     def doRead(self):
         evt = _iocp.Event(self._cbRead, self)
-        try:
-            bytesRead = self.readFromHandle(self.readBufferSize, evt)
-        except Exception as e:
-            return self._handleRead(e.args[0], 0, evt)
 
-        if bytesRead == -1:
-            print("SETTING AS READ", self._readScheduledInOS)
+        rc, bytesRead = self.readFromHandle(self.readBufferSize, evt)
+
+        if rc and rc == ERROR_IO_PENDING:
             self._readScheduledInOS = True
-            print("SETTING AS READ", self._readScheduledInOS)
         else:
-            self._handleRead(0, bytesRead, evt)
+            self._handleRead(rc, bytesRead, evt)
 
 
     def readFromHandle(self, len, evt):
@@ -259,10 +255,10 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         else:
             evt.buff = buff = self.dataBuffer
 
-        rc = self.writeToHandle(buff, evt)
+        rc, bytesWritten = self.writeToHandle(buff, evt)
 
-        if rc is not -1:
-            self._handleWrite(0, rc, evt)
+        if rc and rc is not ERROR_IO_PENDING:
+            self._handleWrite(rc, bytesWritten, evt)
 
 
     def writeToHandle(self, buff, evt):

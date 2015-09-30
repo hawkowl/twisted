@@ -190,10 +190,7 @@ class Overlapped(object):
 
 
     def getresult(self, wait=False):
-
-        print("GETTING RESULT OF", self.address)
-        f =  ffi.buffer(self._buffer)
-        self.buffer = None
+        f = ffi.buffer(self._buffer)
         return f
 
     @property
@@ -208,7 +205,6 @@ class Overlapped(object):
         self._handle = accept
 
         size = ffi.sizeof("struct sockaddr_in6") + 16
-        print(size)
 
         buf = ffi.new("char* [" + str(size) + "]")
         recv = ffi.new("DWORD*")
@@ -279,13 +275,7 @@ class Overlapped(object):
 
         res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
 
-        if res == 0:
-            print("I READ", read[0])
-            return read[0]
-        elif ffi.getwinerror()[0] == 997:
-            return -1
-        else:
-            raise Exception(ffi.getwinerror())
+        return ffi.getwinerror()[0], read[0]
 
     def WSASend(self, socket, data, flags=0):
         # nt WSASend(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
@@ -309,9 +299,4 @@ class Overlapped(object):
 
         res = lib.WSASend(socket, wsabuf, 1, bytesSent, flags, self._ov, NULL)
 
-        if res == 0:
-            return bytesSent[0]
-        elif ffi.getwinerror()[0] == 997:
-            return -1
-        else:
-            raise Exception(ffi.getwinerror())
+        return ffi.getwinerror()[0], bytesSent[0]
