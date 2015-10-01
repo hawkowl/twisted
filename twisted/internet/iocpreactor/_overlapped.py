@@ -53,6 +53,7 @@ BOOL Tw_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVER
 BOOL Tw_ConnectEx6(HANDLE, struct sockaddr_in6*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
 
 int WSARecv(HANDLE, struct __WSABUF* buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, OVERLAPPED *ov, void *crud);
+
 int WSARecvFrom(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, struct sockaddr *fromaddr, int *fromlen, OVERLAPPED *ov, void *crud);
 
 int WSASend(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD flags, OVERLAPPED *ov, void *crud);
@@ -117,7 +118,6 @@ initialize_function_pointers(void)
 BOOL Tw_ConnectEx4(HANDLE a, struct sockaddr_in* b , int c, PVOID d, DWORD e, LPDWORD f, OVERLAPPED* g) {
     return Py_ConnectEx(a, b, c, d, e, f, g);
 }
-
 BOOL Tw_ConnectEx6(HANDLE a, struct sockaddr_in6* b , int c, PVOID d, DWORD e, LPDWORD f, OVERLAPPED* g) {
     return Py_ConnectEx(a, b, c, d, e, f, g);
 }
@@ -210,10 +210,18 @@ class Overlapped(object):
         return f
 
     def getRecvAddress(self):
+        
+        from socket import inet_ntop, ntohs
 
-        print(self.recvAddress.sa_family)
+        if self._socketFamily == AF_INET:
+            address = inet_ntop(AF_INET, ffi.buffer(self.recvAddress[0].sin_addr))
+            port = ntohs(self.recvAddress[0].sin_port)
 
+        elif self._socketFamily == AF_INET6:
+            address = inet_ntop(AF_INET6, ffi.buffer(self.recvAddress[0].sin6_addr))
+            port = ntohs(self.recvAddress[0].sin6_port)
 
+        return (address, port)
 
     @property
     def address(self):
@@ -290,7 +298,7 @@ class Overlapped(object):
         bufflen = ffi.new("DWORD*")
         bufflen[0] = 1
 
-        res = lib.WSARecv(socket, wsabuf, 1, read, _flags, self._ov, NULL)
+        res = lib.WSARecv(socket.fileno(), wsabuf, 1, read, _flags, self._ov, NULL)
 
         return ffi.getwinerror()[0], read[0]
 
@@ -320,17 +328,19 @@ class Overlapped(object):
         bufflen = ffi.new("DWORD*")
         bufflen[0] = 1
 
-        recvAddress = ffi.new("struct sockaddr*")
+        if socket.family == AF_INET:
+            recvAddress = ffi.new("struct sockaddr_in*")
+        elif socket.family == AF_INET6:
+            recvAddress = ffi.new("struct sockaddr_in6*")
+
+        self._socketFamily = socket.family
         self.recvAddress = recvAddress
 
-        print(recvAddress)
-        print(recvAddress[0])
-        print(ffi.sizeof(recvAddress[0]))
-        print(recvAddress.sa_family)
-
+        recvAddress2 = ffi.cast("struct sockaddr*", recvAddress)
         recvAddressSize = ffi.new("int*", ffi.sizeof(recvAddress[0]))
+        self.recvAddress2 = recvAddress2
 
-        res = lib.WSARecvFrom(socket, wsabuf, 1, read, _flags, recvAddress,
+        res = lib.WSARecvFrom(socket.fileno(), wsabuf, 1, read, _flags, recvAddress2,
             recvAddressSize, self._ov, NULL)
 
         return ffi.getwinerror()[0], read[0]

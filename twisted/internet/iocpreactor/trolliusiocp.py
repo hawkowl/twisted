@@ -73,36 +73,36 @@ def connect(socket, address, event):
     return res
 
 
-def recv(socketFn, len, event, flags=0):
+def recv(socket, len, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
     try:
-        res = ov.WSARecv(socketFn, len, flags)
+        res = ov.WSARecv(socket, len, flags)
     except OSError as e:
         res = e.winerror
 
     return res
 
 
-def recvfrom(socketFn, length, event, flags=0):
+def recvfrom(socket, length, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
-    res = ov.WSARecvFrom(socketFn, length, flags)
+    res = ov.WSARecvFrom(socket, length, flags)
     return res
 
 
-def send(socketFn, data, event, flags=0):
+def send(socket, data, event, flags=0):
 
     ov = _overlapped.Overlapped(0)
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
-    res = ov.WSASend(socketFn, data, flags)
+    res = ov.WSASend(socket, data, flags)
 
     return res

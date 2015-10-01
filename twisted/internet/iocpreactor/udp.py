@@ -136,22 +136,23 @@ class Port(abstract.FileHandle):
                   ERROR_CONNECTION_REFUSED, ERROR_PORT_UNREACHABLE):
             if self._connectedAddr:
                 self.protocol.connectionRefused()
-        elif rc:
-            log.msg("error in recvfrom -- %s (%s)" %
-                    (errno.errorcode.get(rc, 'unknown error'), rc))
-        else:
+        elif rc in [0, 234]:
+            # 234 == More data to be read
             try:
                 result = evt.overlapped.getresult()[0:bytesRead]
                 addr = evt.overlapped.getRecvAddress()
                 self.protocol.datagramReceived(result, addr)
             except:
                 log.err()
+        elif rc:
+            log.msg("error in recvfrom -- %s (%s)" %
+                    (errno.errorcode.get(rc, 'unknown error'), rc))
 
 
     def doRead(self):
         evt = _iocp.Event(self.cbRead, self)
 
-        rc, bytesRead = _iocp.recvfrom(self.getFileHandle(), self.readBufferSize, evt)
+        rc, bytesRead = _iocp.recvfrom(self.socket, self.readBufferSize, evt)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleRead(rc, bytesRead, evt)

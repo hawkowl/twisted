@@ -77,7 +77,7 @@ class Connection(abstract.FileHandle, _SocketCloser, _AbortingMixin):
 
 
     def readFromHandle(self, len, evt):
-        return _iocp.recv(self.getFileHandle(), len, evt)
+        return _iocp.recv(self.socket, len, evt)
 
 
     def writeToHandle(self, buff, evt):
@@ -292,7 +292,7 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
 
     def cbConnect(self, rc, _bytes, evt):
 
-        if rc > 1:
+        if rc:
             rc = connectExErrors.get(rc, rc)
             self.failIfNotConnected(error.getConnectError((rc,
                                     errno.errorcode.get(rc, 'Unknown error'))))
