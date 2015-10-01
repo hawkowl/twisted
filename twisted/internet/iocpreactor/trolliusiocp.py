@@ -93,7 +93,7 @@ def recvfrom(socketFn, length, event, flags=0):
     event.overlapped = ov
     event.owner.reactor.port.events[ov.address] = event
 
-    res = ov.WSARecv(socketFn, length, flags)
+    res = ov.WSARecvFrom(socketFn, length, flags)
     return res
 
 

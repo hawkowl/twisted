@@ -100,7 +100,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             return False
 
         # graceful disconnection
-        if rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
+        if (rc == 0 and _bytes == 0) or rc in (errno.WSAEDISCON, ERROR_HANDLE_EOF):
             self.reactor.removeActiveHandle(self)
             self.readConnectionLost(failure.Failure(main.CONNECTION_DONE))
             return False
@@ -126,7 +126,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
         rc, bytesRead = self.readFromHandle(self.readBufferSize, evt)
 
-        if rc and rc == ERROR_IO_PENDING:
+        if not rc or rc == ERROR_IO_PENDING:
             self._readScheduledInOS = True
         else:
             self._handleRead(rc, bytesRead, evt)
@@ -257,7 +257,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
         rc, bytesWritten = self.writeToHandle(buff, evt)
 
-        if rc and rc is not ERROR_IO_PENDING:
+        if not rc or rc is not ERROR_IO_PENDING:
             self._handleWrite(rc, bytesWritten, evt)
 
 

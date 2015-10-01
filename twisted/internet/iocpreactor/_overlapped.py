@@ -18,12 +18,22 @@ typedef int BOOL;
 typedef struct _IN_ADDR { ...; } IN_ADDR;
 
 typedef struct _OVERLAPPED { ...; } OVERLAPPED;
-typedef struct sockaddr_in { ...;
-  short sin_family;
-  unsigned short sin_port;
-  char sin_addr[4];
+
+typedef struct sockaddr {
+    ...;
+    short sa_family;
 };
-typedef struct sockaddr_in6 { ...; };
+
+typedef struct sockaddr_in { ...;
+    short sin_family;
+    unsigned short sin_port;
+    char sin_addr[4];
+};
+typedef struct sockaddr_in6 { ...; 
+    short sin6_family;
+    unsigned short sin6_port;
+    char sin6_addr[16];
+};
 
 
 typedef struct __WSABUF {
@@ -35,16 +45,16 @@ static int initialize_function_pointers(void);
 
 BOOL AcceptEx(HANDLE, HANDLE, char*, DWORD, DWORD, DWORD, LPDWORD, OVERLAPPED*);
 
-
 HANDLE CreateIoCompletionPort(HANDLE fileHandle, HANDLE existing, ULONG_PTR key, DWORD numThreads);
 BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, intptr_t *overlapped, DWORD timeout);
 BOOL PostQueuedCompletionStatus(HANDLE port, DWORD bytes, ULONG_PTR key, OVERLAPPED *ov);
 
-BOOL GetOverlappedResult(HANDLE, OVERLAPPED *ov, LPDWORD, BOOL);
-
 BOOL Tw_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
+BOOL Tw_ConnectEx6(HANDLE, struct sockaddr_in6*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
 
 int WSARecv(HANDLE, struct __WSABUF* buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, OVERLAPPED *ov, void *crud);
+int WSARecvFrom(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, struct sockaddr *fromaddr, int *fromlen, OVERLAPPED *ov, void *crud);
+
 int WSASend(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD flags, OVERLAPPED *ov, void *crud);
 
 int WSAGetLastError(void);
@@ -108,6 +118,10 @@ BOOL Tw_ConnectEx4(HANDLE a, struct sockaddr_in* b , int c, PVOID d, DWORD e, LP
     return Py_ConnectEx(a, b, c, d, e, f, g);
 }
 
+BOOL Tw_ConnectEx6(HANDLE a, struct sockaddr_in6* b , int c, PVOID d, DWORD e, LPDWORD f, OVERLAPPED* g) {
+    return Py_ConnectEx(a, b, c, d, e, f, g);
+}
+
 """)
 
 ffi.compile()
@@ -120,16 +134,21 @@ lib.initialize_function_pointers()
 
 def parse_address(socket, address):
 
-    from socket import inet_aton, htons
+    from socket import inet_pton, htons
 
     if socket.family == AF_INET:
 
         addr = ffi.new("struct sockaddr_in*")
         addr[0].sin_family = AF_INET
         addr[0].sin_port = htons(address[1])
-        addr[0].sin_addr = inet_aton(address[0])
+        addr[0].sin_addr = inet_pton(AF_INET, address[0])
 
-        print("PORT", addr[0].sin_port)
+    elif socket.family == AF_INET6:
+
+        addr = ffi.new("struct sockaddr_in6*")
+        addr[0].sin6_family = AF_INET6
+        addr[0].sin6_port = htons(address[1])
+        addr[0].sin6_addr = inet_pton(AF_INET6, address[0])
 
     return addr
 
@@ -147,9 +166,6 @@ def GetQueuedCompletionStatus(port, timeout):
         rc = 0
 
     rval = (rc, b[0], key[0], int(ov[0]))
-
-    if rc != 258:
-        print("TICK", *rval)
 
     return rval
 
@@ -193,6 +209,12 @@ class Overlapped(object):
         f = ffi.buffer(self._buffer)
         return f
 
+    def getRecvAddress(self):
+
+        print(self.recvAddress.sa_family)
+
+
+
     @property
     def address(self):
 
@@ -226,15 +248,13 @@ class Overlapped(object):
 
         self._handle = socket
 
-        print("ATTEMPTING TO CONNECT", address)
-
         addr = parse_address(socket, address)
         length = ffi.sizeof(addr[0])
 
         if socket.family == AF_INET:
             func = lib.Tw_ConnectEx4
         elif socket.family == AF_INET6:
-            func = lib.Py_ConnectEx6
+            func = lib.Tw_ConnectEx6
 
         res = func(
             socket.fileno(),
@@ -250,9 +270,6 @@ class Overlapped(object):
 
     def WSARecv(self, socket, length, flags=0):
 
-        #int WSARecv(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
-        #    DWORD *flags, OVERLAPPED *ov, void *crud)
-    
         self._handle = socket
 
         wsabuf = ffi.new("WSABUF*")
@@ -277,9 +294,50 @@ class Overlapped(object):
 
         return ffi.getwinerror()[0], read[0]
 
+    def WSARecvFrom(self, socket, length, flags=0):
+    
+        # int WSARecvFrom(HANDLE s, WSABUF *buffs, DWORD buffcount,
+        # DWORD *bytes, DWORD *flags, sockaddr *fromaddr, int *fromlen,
+        # OVERLAPPED *ov, void *crud)
+
+        self._handle = socket
+
+        wsabuf = ffi.new("WSABUF*")
+
+        buff = ffi.new("char [" + str(length) + "]")
+
+        wsabuf[0].len = length
+        wsabuf[0].buf = ffi.addressof(buff)
+
+        self._buffer = buff
+        self._wsabuf = wsabuf
+
+        read = ffi.new("DWORD*")
+        
+        _flags = ffi.new("DWORD*")
+        _flags[0] = flags
+
+        bufflen = ffi.new("DWORD*")
+        bufflen[0] = 1
+
+        recvAddress = ffi.new("struct sockaddr*")
+        self.recvAddress = recvAddress
+
+        print(recvAddress)
+        print(recvAddress[0])
+        print(ffi.sizeof(recvAddress[0]))
+        print(recvAddress.sa_family)
+
+        recvAddressSize = ffi.new("int*", ffi.sizeof(recvAddress[0]))
+
+        res = lib.WSARecvFrom(socket, wsabuf, 1, read, _flags, recvAddress,
+            recvAddressSize, self._ov, NULL)
+
+        return ffi.getwinerror()[0], read[0]
+
+
     def WSASend(self, socket, data, flags=0):
-        # nt WSASend(SOCKET s, WSABUF *buffs, DWORD buffcount, DWORD *bytes,
-        # DWORD flags, OVERLAPPED *ov, void *crud)
+
         self._handle = socket
 
         wsabuf = ffi.new("WSABUF*")

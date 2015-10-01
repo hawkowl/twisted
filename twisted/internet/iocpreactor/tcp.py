@@ -559,7 +559,7 @@ class Port(_SocketCloser, _LogOwner):
 
         # possible errors:
         # (WSAEMFILE, WSAENOBUFS, WSAENFILE, WSAENOMEM, WSAECONNABORTED)
-        if rc > 2:
+        if rc:
             log.msg("Could not accept new connection -- %s (%s)" %
                     (errno.errorcode.get(rc, 'unknown error'), rc))
             return False

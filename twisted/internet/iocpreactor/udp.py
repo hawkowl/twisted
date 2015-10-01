@@ -33,7 +33,6 @@ class Port(abstract.FileHandle):
 
     addressFamily = socket.AF_INET
     socketType = socket.SOCK_DGRAM
-    dynamicReadBuffers = False
 
     # Actual port number being listened on, only set to a non-None
     # value when we are actually listening.
@@ -56,7 +55,6 @@ class Port(abstract.FileHandle):
         abstract.FileHandle.__init__(self, reactor)
 
         skt = socket.socket(self.addressFamily, self.socketType)
-        self.addressBuffer = _iocp.AllocateReadBuffer(addrLen)
 
 
     def _setAddressFamily(self):
@@ -127,13 +125,13 @@ class Port(abstract.FileHandle):
         self.reactor.addActiveHandle(self)
 
 
-    def cbRead(self, rc, bytes, evt):
+    def cbRead(self, rc, bytesRead, evt):
         if self.reading:
-            self.handleRead(rc, bytes, evt)
+            self.handleRead(rc, bytesRead, evt)
             self.doRead()
 
 
-    def handleRead(self, rc, bytes, evt):
+    def handleRead(self, rc, bytesRead, evt):
         if rc in (errno.WSAECONNREFUSED, errno.WSAECONNRESET,
                   ERROR_CONNECTION_REFUSED, ERROR_PORT_UNREACHABLE):
             if self._connectedAddr:
@@ -143,8 +141,9 @@ class Port(abstract.FileHandle):
                     (errno.errorcode.get(rc, 'unknown error'), rc))
         else:
             try:
-                self.protocol.datagramReceived(evt.buff[:bytes],
-                    _iocp.makesockaddr(evt.addr_buff))
+                result = evt.overlapped.getresult()[0:bytesRead]
+                addr = evt.overlapped.getRecvAddress()
+                self.protocol.datagramReceived(result, addr)
             except:
                 log.err()
 
@@ -152,18 +151,10 @@ class Port(abstract.FileHandle):
     def doRead(self):
         evt = _iocp.Event(self.cbRead, self)
 
-        evt.buff = buff = self._readBuffers[0]
-        evt.addr_buff = addr_buff = self.addressBuffer
-        evt.addr_len_buff = addr_len_buff = self.addressLengthBuffer
-
-        # The bindings don't support this yet
-        assert False, "No UDP support yet"
-
-        rc, bytes = _iocp.recvfrom(self.getFileHandle(), buff,
-                                   addr_buff, addr_len_buff, evt)
+        rc, bytesRead = _iocp.recvfrom(self.getFileHandle(), self.readBufferSize, evt)
 
         if rc and rc != ERROR_IO_PENDING:
-            self.handleRead(rc, bytes, evt)
+            self.handleRead(rc, bytesRead, evt)
 
 
     def write(self, datagram, addr=None):
@@ -220,7 +211,7 @@ class Port(abstract.FileHandle):
 
 
     def writeSequence(self, seq, addr):
-        self.write("".join(seq), addr)
+        self.write(b"".join(seq), addr)
 
 
     def connect(self, host, port):
