@@ -343,6 +343,16 @@ def getScripts(basedir=''):
                   [os.path.join(scriptdir, x) for x in thingies])
 
 
+def getCFFIModules():
+
+    cffiModules = []
+
+    if os.name == "nt":
+        cffiModules.append("twisted/internet/iocpreactor/iocp_build.py:ffi")
+
+    return cffiModules
+
+
 ## Helpers and distutil tweaks
 
 class build_scripts_twisted(build_scripts.build_scripts):

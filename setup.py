@@ -44,13 +44,14 @@ def main(args):
 
     from twisted.python.dist import (
         STATIC_PACKAGE_METADATA, getDataFiles, getExtensions, getScripts,
-        getPackages, setup, _EXTRAS_REQUIRE)
+        getPackages, setup, _EXTRAS_REQUIRE, getCFFIModules)
 
     scripts = getScripts()
 
     setup_args.update(dict(
         packages=getPackages('twisted'),
         conditionalExtensions=getExtensions(),
+        cffi_modules=getCFFIModules(),
         scripts=scripts,
         extras_require=_EXTRAS_REQUIRE,
         data_files=getDataFiles('twisted'),

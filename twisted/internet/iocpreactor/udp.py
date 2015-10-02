@@ -5,7 +5,13 @@
 UDP support for IOCP reactor
 """
 
-import socket, operator, struct, warnings, errno
+from __future__ import absolute_import, division
+
+import socket
+import operator
+import struct
+import warnings
+import errno
 
 from zope.interface import implementer
 
@@ -18,7 +24,7 @@ from twisted.internet.iocpreactor.const import ERROR_CONNECTION_REFUSED
 from twisted.internet.iocpreactor.const import ERROR_PORT_UNREACHABLE
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
 from twisted.internet.iocpreactor import abstract
-from twisted.internet.iocpreactor import trolliusiocp as _iocp
+from twisted.internet.iocpreactor import _overlapped
 
 
 @implementer(IReadWriteHandle, interfaces.IListeningPort,
@@ -150,9 +156,9 @@ class Port(abstract.FileHandle):
 
 
     def doRead(self):
-        evt = _iocp.Event(self.cbRead, self)
+        evt = _overlapped.Event(self.cbRead, self)
 
-        rc, bytesRead = _iocp.recvfrom(self.socket, self.readBufferSize, evt)
+        rc, bytesRead = _overlapped.recvfrom(self.socket, self.readBufferSize, evt)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleRead(rc, bytesRead, evt)

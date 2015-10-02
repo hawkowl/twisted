@@ -2513,7 +2513,7 @@ class ServerStringTests(unittest.TestCase):
     SSL_CHAIN_TEMPLATE = "ssl:1234:privateKey=%s:extraCertChain=%s"
 
 
-    def tesvddfgst_sslChainLoads(self):
+    def test_sslChainLoads(self):
         """
         Specifying a chain file loads the contained certificates in the right
         order.

@@ -5,7 +5,12 @@
 TCP support for IOCP reactor
 """
 
-import socket, operator, errno, struct
+from __future__ import absolute_import, division
+
+import socket
+import operator
+import errno
+import struct
 
 from zope.interface import implementer, classImplements
 
@@ -18,7 +23,7 @@ from twisted.python import log, failure, reflect
 from twisted.python.compat import unicode, _PY3
 
 from twisted.internet.iocpreactor import abstract
-from twisted.internet.iocpreactor import trolliusiocp as _iocp
+from twisted.internet.iocpreactor import _overlapped
 
 from twisted.internet.iocpreactor.interfaces import IReadWriteHandle
 from twisted.internet.iocpreactor.const import ERROR_IO_PENDING
@@ -77,15 +82,15 @@ class Connection(abstract.FileHandle, _SocketCloser, _AbortingMixin):
 
 
     def readFromHandle(self, len, evt):
-        return _iocp.recv(self.socket, len, evt)
+        return _overlapped.recv(self.socket, len, evt)
 
 
     def writeToHandle(self, buff, evt):
         """
-        Send C{buff} to current file handle using C{_iocp.send}. The buffer
+        Send C{buff} to current file handle using C{_overlapped.send}. The buffer
         sent is limited to a size of C{self.SEND_LIMIT}.
         """
-        return _iocp.send(self.getFileHandle(),
+        return _overlapped.send(self.getFileHandle(),
             _semiBuffer(buff, 0, self.SEND_LIMIT), evt)
 
 
@@ -325,8 +330,8 @@ class Client(_BaseBaseClient, _BaseTCPClient, Connection):
             # factory.startedConnecting
             return
         self.reactor.addActiveHandle(self)
-        evt = _iocp.Event(self.cbConnect, self)
-        rc = _iocp.connect(self.socket, self.realAddress, evt)
+        evt = _overlapped.Event(self.cbConnect, self)
+        rc = _overlapped.connect(self.socket, self.realAddress, evt)
         
         if rc and rc != ERROR_IO_PENDING:
             self.cbConnect(rc, 0, evt)
@@ -589,11 +594,11 @@ class Port(_SocketCloser, _LogOwner):
 
     def doAccept(self):
 
-        evt = _iocp.Event(self.cbAccept, self)
+        evt = _overlapped.Event(self.cbAccept, self)
         evt.newskt = self.reactor.createSocket(self.addressFamily,
                                                self.socketType)
 
-        rc = _iocp.accept(self.socket, evt.newskt, evt)
+        rc = _overlapped.accept(self.socket, evt.newskt, evt)
 
         if rc and rc != ERROR_IO_PENDING:
             self.handleAccept(rc, evt)

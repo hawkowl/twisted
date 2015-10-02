@@ -1,4 +1,4 @@
-# -*- test-case-name: twisted.internet.test.test_iocp -*-
+# -*- test-case-name: twisted.internet.test.test_overlapped -*-
 # Copyright (c) Twisted Matrix Laboratories.
 # See LICENSE for details.
 
@@ -15,8 +15,7 @@ from twisted.python import log, failure
 from twisted.internet._dumbwin32proc import Process
 from twisted.internet.win32eventreactor import _ThreadedWin32EventsMixin
 
-#from twisted.internet.iocpreactor import iocpsupport as _iocp
-from twisted.internet.iocpreactor import trolliusiocp as _iocp
+from twisted.internet.iocpreactor import _overlapped
 from twisted.internet.iocpreactor.const import WAIT_TIMEOUT
 from twisted.internet.iocpreactor import tcp, udp
 
@@ -55,7 +54,7 @@ class IOCPReactor(base._SignalReactorMixin, base.ReactorBase,
 
     def __init__(self):
         base.ReactorBase.__init__(self)
-        self.port = _iocp.CompletionPort(self)
+        self.port = _overlapped.CompletionPort(self)
         self.handles = set()
 
 

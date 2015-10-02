@@ -1,140 +1,121 @@
-import ctypes
+# Copyright (c) Twisted Matrix Laboratories.
+# See LICENSE for details.
 
-from socket import AF_INET, AF_INET6
+import struct
 
-from cffi import FFI
-ffi = FFI()
+from socket import AF_INET, AF_INET6, inet_pton, htons
 
+from twisted.internet.iocpreactor import const
+from twisted.internet.defer import Deferred
 
-
-ffi.cdef("""
-
-typedef size_t HANDLE;
-typedef size_t SOCKET;
-typedef unsigned long DWORD;
-typedef size_t ULONG_PTR;
-typedef int BOOL;
-
-typedef struct _IN_ADDR { ...; } IN_ADDR;
-
-typedef struct _OVERLAPPED { ...; } OVERLAPPED;
-
-typedef struct sockaddr {
-    ...;
-    short sa_family;
-};
-
-typedef struct sockaddr_in { ...;
-    short sin_family;
-    unsigned short sin_port;
-    char sin_addr[4];
-};
-typedef struct sockaddr_in6 { ...; 
-    short sin6_family;
-    unsigned short sin6_port;
-    char sin6_addr[16];
-};
-
-
-typedef struct __WSABUF {
-    ULONG len;
-    char *buf;
-} WSABUF;
-
-static int initialize_function_pointers(void);
-
-BOOL AcceptEx(HANDLE, HANDLE, char*, DWORD, DWORD, DWORD, LPDWORD, OVERLAPPED*);
-
-HANDLE CreateIoCompletionPort(HANDLE fileHandle, HANDLE existing, ULONG_PTR key, DWORD numThreads);
-BOOL GetQueuedCompletionStatus(HANDLE port, DWORD *bytes, ULONG_PTR *key, intptr_t *overlapped, DWORD timeout);
-BOOL PostQueuedCompletionStatus(HANDLE port, DWORD bytes, ULONG_PTR key, OVERLAPPED *ov);
-
-BOOL Tw_ConnectEx4(HANDLE, struct sockaddr_in*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
-BOOL Tw_ConnectEx6(HANDLE, struct sockaddr_in6*, int, PVOID, DWORD, LPDWORD, OVERLAPPED*);
-
-int WSARecv(HANDLE, struct __WSABUF* buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, OVERLAPPED *ov, void *crud);
-
-int WSARecvFrom(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD *flags, struct sockaddr *fromaddr, int *fromlen, OVERLAPPED *ov, void *crud);
-
-int WSASend(HANDLE s, WSABUF *buffs, DWORD buffcount, DWORD *bytes, DWORD flags, OVERLAPPED *ov, void *crud);
-
-int WSAGetLastError(void);
-
-HANDLE getInvalidHandle();
-""")
-
-ffi.set_source("_overlapped2",
-"""
-#include <sys/types.h>
-
-#define WINDOWS_LEAN_AND_MEAN
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <mswsock.h>
-#include <in6addr.h>
-
-
-#pragma comment(lib, "Mswsock.lib")
-#pragma comment(lib, "ws2_32.lib")
-
-HANDLE getInvalidHandle() {
-    return INVALID_HANDLE_VALUE;
-}
-
-static LPFN_ACCEPTEX Py_AcceptEx = NULL;
-static LPFN_CONNECTEX Py_ConnectEx = NULL;
-static LPFN_DISCONNECTEX Py_DisconnectEx = NULL;
-
-
-#define GET_WSA_POINTER(s, x)                                           \
-    (SOCKET_ERROR != WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,    \
-                              &Guid##x, sizeof(Guid##x), &Py_##x,       \
-                              sizeof(Py_##x), &dwBytes, NULL, NULL))
-
-static int
-initialize_function_pointers(void)
-{
-    GUID GuidAcceptEx = WSAID_ACCEPTEX;
-    GUID GuidConnectEx = WSAID_CONNECTEX;
-    GUID GuidDisconnectEx = WSAID_DISCONNECTEX;
-    SOCKET s;
-    DWORD dwBytes;
-
-    s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-    if (!GET_WSA_POINTER(s, AcceptEx) ||
-        !GET_WSA_POINTER(s, ConnectEx) ||
-        !GET_WSA_POINTER(s, DisconnectEx))
-    {
-        closesocket(s);
-        return -1;
-    }
-
-    closesocket(s);
-
-    return 0;
-}
-
-BOOL Tw_ConnectEx4(HANDLE a, struct sockaddr_in* b , int c, PVOID d, DWORD e, LPDWORD f, OVERLAPPED* g) {
-    return Py_ConnectEx(a, b, c, d, e, f, g);
-}
-BOOL Tw_ConnectEx6(HANDLE a, struct sockaddr_in6* b , int c, PVOID d, DWORD e, LPDWORD f, OVERLAPPED* g) {
-    return Py_ConnectEx(a, b, c, d, e, f, g);
-}
-
-""")
-
-ffi.compile()
-
-NULL = ffi.NULL
-
-from _overlapped2 import ffi, lib
+from ._iocp import ffi, lib
 
 lib.initialize_function_pointers()
 
-def parse_address(socket, address):
+NULL = ffi.NULL
 
-    from socket import inet_pton, htons
+
+class Event(object):
+    def __init__(self, callback, owner, **kw):
+        self.callback = callback
+        self.owner = owner
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+    def __repr__(self):
+        return "<event cb={} owner={}>".format(self.callback, self.owner)
+
+
+class CompletionPort(object):
+    """
+    An IOCP CompletionPort thing.
+    """
+
+    def __init__(self, reactor):
+
+        self.reactor = reactor
+        self.events = {}
+        self.ports = []
+
+        self.port = CreateIoCompletionPort(
+            None, 0, 0, 0)
+
+
+    def getEvent(self, timeout):
+        status = GetQueuedCompletionStatus(self.port, timeout)
+        status = list(status)
+
+        if status[3] in self.events.keys():
+            status[3] = self.events.pop(status[3])
+
+        return status
+
+    def postEvent(self, b, key, event):
+        PostQueuedCompletionStatus(self.port, b, key, 0)
+
+    def addHandle(self, handle, key):
+        CreateIoCompletionPort(handle, self.port, key, 0)
+
+
+def accept(listening, accepting, event):
+
+    ov = Overlapped(0)
+    res = ov.AcceptEx(listening, accepting)
+
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+    event.port = ov
+
+    return res
+
+
+def connect(socket, address, event):
+
+    ov = Overlapped(0)
+    res = ov.ConnectEx(socket, address)
+
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+
+    return res
+
+
+def recv(socket, len, event, flags=0):
+
+    ov = Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+
+    try:
+        res = ov.WSARecv(socket, len, flags)
+    except OSError as e:
+        res = e.winerror
+
+    return res
+
+
+def recvfrom(socket, length, event, flags=0):
+
+    ov = Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+
+    res = ov.WSARecvFrom(socket, length, flags)
+    return res
+
+
+def send(socket, data, event, flags=0):
+
+    ov = Overlapped(0)
+    event.overlapped = ov
+    event.owner.reactor.port.events[ov.address] = event
+
+    res = ov.WSASend(socket, data, flags)
+
+    return res
+
+
+def parse_address(socket, address):
 
     if socket.family == AF_INET:
 
@@ -210,7 +191,7 @@ class Overlapped(object):
         return f
 
     def getRecvAddress(self):
-        
+
         from socket import inet_ntop, ntohs
 
         if self._socketFamily == AF_INET:

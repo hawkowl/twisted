@@ -908,7 +908,8 @@ class WriteDataTests(unittest.TestCase):
             expected = b"".join([b"Hello Cleveland!\n",
                                 b"Goodbye", b" cruel", b" world", b"\n"])
             self.failUnless(clientF.data == expected,
-                            "client didn't receive all the data it expected")
+                            "client didn't receive all the data it expected"
+                            "(%s!=%s)" % (clientF.data, expected))
         d = defer.gatherResults([wrappedF.onDisconnect,
                                  wrappedClientF.onDisconnect])
         return d.addCallback(check)
@@ -1383,11 +1384,15 @@ class LargeBufferWriterProtocol(protocol.Protocol):
         self.factory.done = 1
         self.transport.loseConnection()
 
+
+
 class LargeBufferReaderProtocol(protocol.Protocol):
     def dataReceived(self, data):
         self.factory.len += len(data)
     def connectionLost(self, reason):
         self.factory.done = 1
+
+
 
 class LargeBufferReaderClientFactory(protocol.ClientFactory):
     def __init__(self):
@@ -1400,13 +1405,16 @@ class LargeBufferReaderClientFactory(protocol.ClientFactory):
         return p
 
 
+
 class FireOnClose(policies.ProtocolWrapper):
-    """A wrapper around a protocol that makes it fire a deferred when
+    """
+    A wrapper around a protocol that makes it fire a deferred when
     connectionLost is called.
     """
     def connectionLost(self, reason):
         policies.ProtocolWrapper.connectionLost(self, reason)
         self.factory.deferred.callback(None)
+
 
 
 class FireOnCloseFactory(policies.WrappingFactory):
@@ -1418,10 +1426,12 @@ class FireOnCloseFactory(policies.WrappingFactory):
 
 
 class LargeBufferTests(unittest.TestCase):
-    """Test that buffering large amounts of data works.
+    """
+    Test that buffering large amounts of data works.
     """
 
     datalen = 60*1024*1024
+
     def testWriter(self):
         f = protocol.Factory()
         f.protocol = LargeBufferWriterProtocol
@@ -1447,9 +1457,9 @@ class LargeBufferTests(unittest.TestCase):
         return d.addCallback(check)
 
 
+
 @implementer(IHalfCloseableProtocol)
 class MyHCProtocol(AccumulatingProtocol):
-
 
     readHalfClosed = False
     writeHalfClosed = False
@@ -1465,6 +1475,7 @@ class MyHCProtocol(AccumulatingProtocol):
         # Invoke notification logic from the base class to simplify testing.
         if self.readHalfClosed:
             self.connectionLost(None)
+
 
 
 class MyHCFactory(protocol.ServerFactory):
