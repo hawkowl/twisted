@@ -9,8 +9,6 @@ Python 3 and Windows-specific wrappers for L{os.path}/L{os} that use Unicode onl
 import os
 import os.path
 
-from os import listdir, utime, stat
-
 
 def _ensureText(path):
 
