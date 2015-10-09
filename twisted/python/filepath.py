@@ -1712,8 +1712,7 @@ class FilePath(AbstractFilePath):
             filesystems)
         """
         try:
-            os.rename(self._getPathAsSameTypeAs(destination.path),
-                      destination.path)
+            rename(self.path, destination.path)
         except OSError as ose:
             if ose.errno == errno.EXDEV:
                 # man 2 rename, ubuntu linux 5.10 "breezy":
