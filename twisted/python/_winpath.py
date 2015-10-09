@@ -40,5 +40,6 @@ def basename(path):
 def dirname(path):
     return os.path.dirname(_ensureText(path))
 
-def join(*paths):
-    return os.path.join([_ensureText(path) for path in paths])
+def join(path, *paths):
+    return os.path.join(_ensureText(path),
+                        *[_ensureText(path) for path in paths])
