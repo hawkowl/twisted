@@ -20,7 +20,7 @@ def _ensureText(path):
 
 
 def _ensureOriginal(oldPath, newPath):
-    if isinstance(oldPath, bytes):
+    if isinstance(oldPath, bytes) and isinstance(newPath, str):
         return newPath.encode('mbcs')
     return newPath
 
