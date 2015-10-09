@@ -16,10 +16,6 @@ import base64
 from hashlib import sha1
 from warnings import warn
 
-from os.path import isabs, exists, normpath, abspath, splitext
-from os.path import basename, dirname, join as joinpath
-from os import listdir, utime, stat
-
 from stat import S_ISREG, S_ISDIR, S_IMODE, S_ISBLK, S_ISSOCK
 from stat import S_IRUSR, S_IWUSR, S_IXUSR
 from stat import S_IRGRP, S_IWGRP, S_IXGRP
@@ -47,6 +43,16 @@ _CREATE_FLAGS = (os.O_EXCL |
                  os.O_RDWR |
                  O_BINARY)
 
+if _PY3 and platform.isWindows():
+
+    from ._winpath import isabs, exists, normpath, abspath, splitext
+    from ._winpath import basename, dirname, join as joinpath
+    from ._winpath import listdir, utime, stat
+
+else:
+    from os.path import isabs, exists, normpath, abspath, splitext
+    from os.path import basename, dirname, join as joinpath
+    from os import listdir, utime, stat
 
 
 def _stub_islink(path):
