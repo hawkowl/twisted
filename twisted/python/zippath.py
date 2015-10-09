@@ -16,9 +16,15 @@ import errno
 
 from zipfile import ZipFile
 
-from twisted.python.compat import comparable, cmp
+from twisted.python.compat import comparable, cmp, _PY3
 from twisted.python.filepath import IFilePath, FilePath, AbstractFilePath
 from twisted.python.filepath import _coerceToFilesystemEncoding
+from twisted.python.runtime import platform
+
+if _PY3 and platform.isWindows():
+    from .winpath import path as pathjoin, abspath, splitext
+else:
+    from os.path import path as pathjoin, abspath, splitext
 
 from zope.interface import implementer
 
@@ -49,8 +55,8 @@ class ZipPath(AbstractFilePath):
         sep = _coerceToFilesystemEncoding(pathInArchive, ZIP_PATH_SEP)
         archiveFilename = _coerceToFilesystemEncoding(
             pathInArchive, archive.zipfile.filename)
-        self.path = os.path.join(archiveFilename,
-                                 *(self.pathInArchive.split(sep)))
+        self.path = pathjoin(archiveFilename,
+                             *(self.pathInArchive.split(sep)))
 
 
     def __cmp__(self, other):
@@ -62,7 +68,7 @@ class ZipPath(AbstractFilePath):
 
     def __repr__(self):
         parts = [_coerceToFilesystemEncoding(
-            self.sep, os.path.abspath(self.archive.path))]
+            self.sep, abspath(self.archive.path))]
         parts.extend(self.pathInArchive.split(self.sep))
         ossep = _coerceToFilesystemEncoding(self.sep, os.sep)
         return "ZipPath(%r)" % (ossep.join(parts),)
@@ -140,7 +146,7 @@ class ZipPath(AbstractFilePath):
         # This happens to work out because of the fact that we use OS-specific
         # path separators in the constructor to construct our fake 'path'
         # attribute.
-        return os.path.splitext(self.path)
+        return splitext(self.path)
 
 
     def basename(self):
@@ -286,7 +292,7 @@ class ZipArchive(ZipPath):
 
 
     def __repr__(self):
-        return 'ZipArchive(%r)' % (os.path.abspath(self.path),)
+        return 'ZipArchive(%r)' % (abspath(self.path),)
 
 
 __all__ = ['ZipArchive', 'ZipPath']
