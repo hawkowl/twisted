@@ -19,6 +19,12 @@ def _ensureText(path):
     return path
 
 
+def _ensureOriginal(oldPath, newPath):
+    if isinstance(oldPath, bytes):
+        return newPath.encode('mbcs')
+    return newPath
+
+
 def isabs(path):
     return os.path.isabs(_ensureText(path))
 
@@ -26,20 +32,26 @@ def exists(path):
     return os.path.exists(_ensureText(path))
 
 def normpath(path):
-    return os.path.normpath(_ensureText(path))
+    res = os.path.normpath(_ensureText(path))
+    return _ensureOriginal(path, res)
 
 def abspath(path):
-    return os.path.abspath(_ensureText(path))
+    res = os.path.abspath(_ensureText(path))
+    return _ensureOriginal(path, res)
 
 def splitext(path):
-    return os.path.splitext(_ensureText(path))
+    res = os.path.splitext(_ensureText(path))
+    return tuple([_ensureOriginal(path, newPath) for newPath in res])
 
 def basename(path):
-    return os.path.basename(_ensureText(path))
+    res = os.path.basename(_ensureText(path))
+    return _ensureOriginal(path, res)
 
 def dirname(path):
-    return os.path.dirname(_ensureText(path))
+    res = os.path.dirname(_ensureText(path))
+    return _ensureOriginal(path, res)
 
 def join(path, *paths):
-    return os.path.join(_ensureText(path),
-                        *[_ensureText(path) for path in paths])
+    res = os.path.join(_ensureText(path),
+                       *[_ensureText(path) for path in paths])
+    return _ensureOriginal(path, res)
