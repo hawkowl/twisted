@@ -1,7 +1,6 @@
 # Copyright (c) Twisted Matrix Laboratories.
 # See LICENSE for details.
 
-
 """
 Tests for L{twisted.python.compat}.
 """
@@ -18,6 +17,7 @@ from twisted.python.compat import (
     iterbytes, intToBytes, ioType, bytesEnviron, iteritems
 )
 from twisted.python.filepath import FilePath
+from twisted.python.runtime import platform
 
 
 
