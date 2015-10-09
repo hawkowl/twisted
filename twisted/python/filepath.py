@@ -48,13 +48,13 @@ if _PY3 and platform.isWindows():
     from ._winpath import isabs, exists, normpath, abspath, splitext
     from ._winpath import basename, dirname, join as joinpath
     from ._winpath import realpath
-    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs
+    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs, open, fdopen
 
 else:
     from os.path import isabs, exists, normpath, abspath, splitext
     from os.path import basename, dirname, join as joinpath
     from os.path import realpath
-    from os import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs
+    from os import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs, open, fdopen
 
 
 def _stub_islink(path):
@@ -1576,13 +1576,13 @@ class FilePath(AbstractFilePath):
 
         @return: A file-like object opened from this path.
         """
-        fdint = os.open(self.path, _CREATE_FLAGS)
+        fdint = open(self.path, _CREATE_FLAGS)
 
         # XXX TODO: 'name' attribute of returned files is not mutable or
         # settable via fdopen, so this file is slighly less functional than the
         # one returned from 'open' by default.  send a patch to Python...
 
-        return os.fdopen(fdint, 'w+b')
+        return fdopen(fdint, 'w+b')
 
 
     def temporarySibling(self, extension=b""):

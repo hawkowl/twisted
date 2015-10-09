@@ -90,3 +90,9 @@ def mkdir(path):
 
 def makedirs(path):
     return os.makedirs(_ensureText(path))
+
+def open(path, *args, **kwargs):
+    return os.open(_ensureText(path), *args, **kwargs)
+
+def fdopen(path, *args, **kwargs):
+    return os.fdopen(_ensureText(path), *args, **kwargs)
