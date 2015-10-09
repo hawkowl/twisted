@@ -22,9 +22,9 @@ from twisted.python.filepath import _coerceToFilesystemEncoding
 from twisted.python.runtime import platform
 
 if _PY3 and platform.isWindows():
-    from ._winpath import path as pathjoin, abspath, splitext
+    from ._winpath import join as pathjoin, abspath, splitext
 else:
-    from os.path import path as pathjoin, abspath, splitext
+    from os.path import join as pathjoin, abspath, splitext
 
 from zope.interface import implementer
 
