@@ -549,7 +549,7 @@ class RequestTests(unittest.TestCase):
 
         # Since we didn't "handle" the exception, flush it to prevent a test
         # failure
-        print(self.flushLoggedErrors())
+        print([repr(x) for x in self.flushLoggedErrors()])
         self.assertEqual(1, len(self.flushLoggedErrors()))
 
 
