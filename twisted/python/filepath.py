@@ -368,8 +368,6 @@ class AbstractFilePath(object):
                 raise
             raise _WindowsUnlistableError(winErrObj)
         except OSError as ose:
-            print("omg os error")
-            print(ose)
             if ose.errno not in (errno.ENOENT, errno.ENOTDIR):
                 # Other possible errors here, according to linux manpages:
                 # EACCES, EMIFLE, ENFILE, ENOMEM.  None of these seem like the

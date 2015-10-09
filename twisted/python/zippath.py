@@ -118,6 +118,7 @@ class ZipPath(AbstractFilePath):
 
 
     def isdir(self):
+        print(self.archive.childmap)
         return self.pathInArchive in self.archive.childmap
 
 
