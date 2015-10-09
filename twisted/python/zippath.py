@@ -19,6 +19,7 @@ from zipfile import ZipFile
 from twisted.python.compat import comparable, cmp, _PY3
 from twisted.python.filepath import IFilePath, FilePath, AbstractFilePath
 from twisted.python.filepath import _coerceToFilesystemEncoding
+from twisted.python.filepath import UnlistableError
 from twisted.python.runtime import platform
 
 if _PY3 and platform.isWindows():
@@ -118,7 +119,6 @@ class ZipPath(AbstractFilePath):
 
 
     def isdir(self):
-        print(self.archive.childmap)
         return self.pathInArchive in self.archive.childmap
 
 
@@ -135,9 +135,11 @@ class ZipPath(AbstractFilePath):
             if self.isdir():
                 return list(self.archive.childmap[self.pathInArchive].keys())
             else:
-                raise OSError(errno.ENOTDIR, "Leaf zip entry listed")
+                raise UnlistableError(OSError(errno.ENOTDIR,
+                                              "Leaf zip entry listed"))
         else:
-            raise OSError(errno.ENOENT, "Non-existent zip entry listed")
+            raise UnlistableError(OSError(errno.ENOENT,
+                                          "Non-existent zip entry listed"))
 
 
     def splitext(self):
