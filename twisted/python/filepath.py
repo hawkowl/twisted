@@ -44,17 +44,15 @@ _CREATE_FLAGS = (os.O_EXCL |
                  O_BINARY)
 
 if _PY3 and platform.isWindows():
-
     from ._winpath import isabs, exists, normpath, abspath, splitext
-    from ._winpath import basename, dirname, join as joinpath
-    from ._winpath import realpath
-    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs, open as _open, fdopen
-
+    from ._winpath import basename, dirname, join as joinpath, realpath
+    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove
+    from ._winpath import rename, mkdir, makedirs, open as _open, fdopen
 else:
     from os.path import isabs, exists, normpath, abspath, splitext
-    from os.path import basename, dirname, join as joinpath
-    from os.path import realpath
-    from os import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs, open as _open, fdopen
+    from os.path import basename, dirname, join as joinpath, realpath
+    from os import listdir, utime, stat, symlink, chmod, rmdir, remove, rename
+    from os import mkdir, makedirs, open as _open, fdopen
 
 
 def _stub_islink(path):
@@ -370,6 +368,8 @@ class AbstractFilePath(object):
                 raise
             raise _WindowsUnlistableError(winErrObj)
         except OSError as ose:
+            print("omg os error")
+            print(ose)
             if ose.errno not in (errno.ENOENT, errno.ENOTDIR):
                 # Other possible errors here, according to linux manpages:
                 # EACCES, EMIFLE, ENFILE, ENOMEM.  None of these seem like the
