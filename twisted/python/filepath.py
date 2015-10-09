@@ -47,12 +47,14 @@ if _PY3 and platform.isWindows():
 
     from ._winpath import isabs, exists, normpath, abspath, splitext
     from ._winpath import basename, dirname, join as joinpath
-    from ._winpath import listdir, utime, stat
+    from ._winpath import realpath
+    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove
 
 else:
     from os.path import isabs, exists, normpath, abspath, splitext
     from os.path import basename, dirname, join as joinpath
-    from os import listdir, utime, stat
+    from os.path import realpath
+    from os import listdir, utime, stat, symlink, chmod, rmdir, remove
 
 
 def _stub_islink(path):
@@ -399,8 +401,8 @@ class AbstractFilePath(object):
                 # can walk through the directory
                 if (descend is None or descend(c)):
                     for subc in c.walk(descend):
-                        if os.path.realpath(self.path).startswith(
-                            os.path.realpath(subc.path)):
+                        if realpath(self.path).startswith(
+                            realpath(subc.path)):
                             raise LinkError("Cycle in file graph.")
                         yield subc
                 else:
@@ -954,7 +956,7 @@ class FilePath(AbstractFilePath):
         @raises LinkError: if links are not supported or links are cyclical.
         """
         if self.islink():
-            result = os.path.realpath(self.path)
+            result = realpath(self.path)
             if result == self.path:
                 raise LinkError("Cyclical link - will loop forever")
             return self.clonePath(result)
@@ -988,7 +990,7 @@ class FilePath(AbstractFilePath):
         @param linkFilePath: a FilePath representing the link to be created.
         @type linkFilePath: L{FilePath}
         """
-        os.symlink(self.path, linkFilePath.path)
+        symlink(self.path, linkFilePath.path)
 
 
     def open(self, mode='r'):
@@ -1055,7 +1057,7 @@ class FilePath(AbstractFilePath):
             the command line chmod)
         @type mode: L{int}
         """
-        os.chmod(self.path, mode)
+        chmod(self.path, mode)
 
 
     def getsize(self):
@@ -1411,9 +1413,9 @@ class FilePath(AbstractFilePath):
         if self.isdir() and not self.islink():
             for child in self.children():
                 child.remove()
-            os.rmdir(self.path)
+            rmdir(self.path)
         else:
-            os.remove(self.path)
+            remove(self.path)
         self.changed()
 
 

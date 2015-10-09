@@ -55,3 +55,29 @@ def join(path, *paths):
     res = os.path.join(_ensureText(path),
                        *[_ensureText(path) for path in paths])
     return _ensureOriginal(path, res)
+
+def listdir(path):
+    res = os.listdir(path)
+    return [_ensureOriginal(path, newPath) for newpath in res]
+
+def utime(path, times):
+    return os.utime(_ensureText(path), times)
+
+def stat(path):
+    return os.stat(_ensureText(path))
+
+def realpath(path):
+    res = os.path.realpath(_ensureText(path))
+    return _ensureOriginal(path, res)
+
+def symlink(source, link_name):
+    return os.symlink(_ensureText(source), _ensureText(link_name))
+
+def chmod(path, mode):
+    return os.chmod(_ensureText(path), mode)
+
+def rmdir(path):
+    return os.rmdir(_ensureText(path))
+
+def remove(path):
+    return os.remove(_ensureText(path))
