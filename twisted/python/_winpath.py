@@ -58,7 +58,7 @@ def join(path, *paths):
 
 def listdir(path):
     res = os.listdir(path)
-    return [_ensureOriginal(path, newPath) for newpath in res]
+    return [_ensureOriginal(path, newPath) for newPath in res]
 
 def utime(path, times):
     return os.utime(_ensureText(path), times)
