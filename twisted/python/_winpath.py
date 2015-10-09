@@ -81,3 +81,12 @@ def rmdir(path):
 
 def remove(path):
     return os.remove(_ensureText(path))
+
+def rename(fromPath, toPath):
+    return os.rename(_ensureText(fromPath), _ensureText(toPath))
+
+def mkdir(path):
+    return os.mkdir(_ensureText(path))
+
+def makedirs(path):
+    return os.makedirs(_ensureText(path))

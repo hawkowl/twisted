@@ -48,13 +48,13 @@ if _PY3 and platform.isWindows():
     from ._winpath import isabs, exists, normpath, abspath, splitext
     from ._winpath import basename, dirname, join as joinpath
     from ._winpath import realpath
-    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove
+    from ._winpath import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs
 
 else:
     from os.path import isabs, exists, normpath, abspath, splitext
     from os.path import basename, dirname, join as joinpath
     from os.path import realpath
-    from os import listdir, utime, stat, symlink, chmod, rmdir, remove
+    from os import listdir, utime, stat, symlink, chmod, rmdir, remove, rename, mkdir, makedirs
 
 
 def _stub_islink(path):
@@ -1426,7 +1426,7 @@ class FilePath(AbstractFilePath):
 
         @return: C{None}
         """
-        return os.makedirs(self.path)
+        return makedirs(self.path)
 
 
     def globChildren(self, pattern):
@@ -1536,8 +1536,8 @@ class FilePath(AbstractFilePath):
         finally:
             f.close()
         if platform.isWindows() and exists(self.path):
-            os.unlink(self.path)
-        os.rename(sib.path, self._getPathAsSameTypeAs(sib.path))
+            remove(self.path)
+        rename(sib.path, self.path)
 
 
     def __cmp__(self, other):
@@ -1554,7 +1554,7 @@ class FilePath(AbstractFilePath):
 
         @raise OSError: If the directory cannot be created.
         """
-        os.mkdir(self.path)
+        mkdir(self.path)
 
 
     def requireCreate(self, val=1):
