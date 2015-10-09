@@ -549,7 +549,6 @@ class RequestTests(unittest.TestCase):
 
         # Since we didn't "handle" the exception, flush it to prevent a test
         # failure
-        print([repr(x).encode('cp850', errors='backslashreplace').decode('cp850') for x in self.flushLoggedErrors()])
         self.assertEqual(1, len(self.flushLoggedErrors()))
 
 

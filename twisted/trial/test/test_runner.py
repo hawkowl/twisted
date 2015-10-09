@@ -1030,11 +1030,16 @@ class RunnerDeprecationTests(unittest.SynchronousTestCase):
             # We have to use a pyunit test, otherwise we'll get deprecation
             # warnings about using iterate() in a test.
             trialRunner.run(pyunit.TestCase('id'))
-        self.assertWarns(
-            DeprecationWarning,
+        
+        f()
+        warnings = self.flushWarnings()
+
+        self.assertEqual(warnings[-1]["category"], DeprecationWarning)
+        self.assertEqual(
+            warnings[-1]["message"],
             "%s should implement done() but doesn't. Falling back to "
-            "printErrors() and friends." % reflect.qual(result.__class__),
-            __file__, f)
+            "printErrors() and friends." % reflect.qual(result.__class__))
+        self.assertEqual(warnings[-1]["filename"], __file__)
 
 
 
