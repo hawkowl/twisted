@@ -126,9 +126,16 @@ class UtilTests(unittest.TestCase):
 
             def read(self):
                 return ""
+        
+        sleptFor = []
+    
+        def fakeSleep(time):
+            sleptFor.append(time)
 
         self.patch(lockfile, '_open', FakeOpen)
+        self.patch(lockfile, '_sleep', fakeSleep)
         self.assertRaises(RuntimeError, lockfile.symlink, name, 'data')
+        self.assertEqual(round(sum(sleptFor)), 10.0)
     if not (platform.isWindows() and _PY3):
         test_symlinkLockTimeoutWindows.skip = (
             "The interesting(tm) symlink timeout support is only needed on "
