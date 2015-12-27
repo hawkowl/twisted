@@ -88,12 +88,36 @@ else:
             f.flush()
 
         if _PY3:
-            size = 0
+            from time import sleep
+
+            readValue = ""
+            iterations = 0
             # Python 3 has no 'commit' flag for fopen, so let Windows catch
-            # up... sigh -hawkie
-            while size != len(value):
+            # up... we do this by looping and reading the file, hoping to get
+            # the correct value. It sucks, but, what can you do? Locks are
+            # global state, and as we all know, global state is BAD and EVIL.
+            # NOT EVEN ONCE - Amber
+            while readValue != value:
                 with _open(newvalname, "r") as f:
-                    size = len(f.read())
+                    readValue = f.read()
+                iterations += 1
+                sleep(0.0001)
+
+                # What is a reasonable number here? Well, you give an inch, and
+                # Windows takes a mile. There are 63,360 inches in a mile, so
+                # that seems as reasonable as any other number. This means we
+                # will try to get a lock for at least five seconds.
+                if iterations > 63360:
+                    try:
+                        # Try and remove the failed lock. We have given up at
+                        # this point, so if we can't remove it, we can't really
+                        # try much.
+                        os.remove(newvalname)
+                    except:
+                        pass
+                    # We ought to play sad_trombone.mp3 here. Give up and throw
+                    # an exception.
+                    raise RuntimeError("Unable to get a lock.")
 
         try:
             rename(newlinkname, filename)
