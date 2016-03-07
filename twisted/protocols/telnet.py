@@ -20,11 +20,12 @@ from io import BytesIO
 # Twisted Imports
 from twisted import copyright
 from twisted.internet import protocol
+from twisted.python.compat import networkString, iterbytes, _bytesChr as chr
 
 # Some utility chars.
 ESC =            chr(27) # ESC for doing fanciness
-BOLD_MODE_ON =   ESC+"[1m" # turn bold on
-BOLD_MODE_OFF=   ESC+"[m"  # no char attributes
+BOLD_MODE_ON =   ESC + b"[1m" # turn bold on
+BOLD_MODE_OFF=   ESC + b"[m"  # no char attributes
 
 
 # Characters gleaned from the various (and conflicting) RFCs.  Not all of these are correct.
@@ -133,7 +134,7 @@ iacBytes = {
     WILL: 'WILL',
     WONT: 'WONT',
     IP:   'IP'
-    }
+}
 
 def multireplace(st, dct):
     for k, v in dct.items():
@@ -162,9 +163,9 @@ class Telnet(protocol.Protocol):
     gotIAC = 0
     iacByte = None
     lastLine = None
-    buffer = ''
+    buffer = b''
     echo = 0
-    delimiters = ['\r\n', '\r\000']
+    delimiters = [b'\r\n', b'\r\000']
     mode = "User"
 
     def write(self, data):
@@ -180,13 +181,13 @@ class Telnet(protocol.Protocol):
         """Override me to return a string which will be sent to the client
         before login."""
         x = self.factory.__class__
-        return ("\r\n" + x.__module__ + '.' + x.__name__ +
+        return networkString("\r\n" + x.__module__ + '.' + x.__name__ +
                 '\r\nTwisted %s\r\n' % copyright.version
                 )
 
     def loginPrompt(self):
         """Override me to return a 'login:'-type prompt."""
-        return "username: "
+        return b"username: "
 
     def iacSBchunk(self, chunk):
         pass
@@ -211,7 +212,7 @@ class Telnet(protocol.Protocol):
         in by the current mode. telnet_* methods should return a string which
         will become the new mode.  If None is returned, the mode will not change.
         """
-        mode = getattr(self, "telnet_"+self.mode)(line)
+        mode = getattr(self, "telnet_" + self.mode)(line)
         if mode is not None:
             self.mode = mode
 
@@ -221,14 +222,14 @@ class Telnet(protocol.Protocol):
         you want to do something else when the username is received (ie,
         create a new user if the user doesn't exist), override me."""
         self.username = user
-        self.write(IAC+WILL+ECHO+"password: ")
+        self.write(IAC + WILL + ECHO + b"password: ")
         return "Password"
 
     def telnet_Password(self, paswd):
         """I accept a password as an argument, and check it with the
         checkUserAndPass method. If the login is successful, I call
         loggedIn()."""
-        self.write(IAC+WONT+ECHO+"*****\r\n")
+        self.write(IAC + WONT + ECHO + b"*****\r\n")
         try:
             checked = self.checkUserAndPass(self.username, paswd)
         except:
@@ -269,7 +270,7 @@ class Telnet(protocol.Protocol):
     def dataReceived(self, data):
         chunk = BytesIO()
         # silly little IAC state-machine
-        for char in data:
+        for char in iterbytes(data):
             if self.gotIAC:
                 # working on an IAC request state
                 if self.iacByte:

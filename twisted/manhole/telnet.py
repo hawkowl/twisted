@@ -1,16 +1,24 @@
 # Copyright (c) Twisted Matrix Laboratories.
 # See LICENSE for details.
 
+"""
+Telnet-based shell.
+"""
 
-"""Telnet-based shell."""
+from __future__ import absolute_import, division
 
-# twisted imports
+import copy
+import sys
+
 from twisted.protocols import telnet
 from twisted.internet import protocol
 from twisted.python import log, failure
+from twisted.python.compat import unicode, _PY3
 
-# system imports
-import string, copy, sys
+if _PY3:
+    from io import StringIO
+else:
+    from StringIO import StringIO
 
 
 class Shell(telnet.Telnet):
@@ -21,26 +29,32 @@ class Shell(telnet.Telnet):
         self.lineBuffer = []
 
     def loggedIn(self):
-        self.transport.write(">>> ")
+        self.transport.write(b">>> ")
 
     def checkUserAndPass(self, username, password):
+        if _PY3:
+            username = username.decode('ascii')
+            password = password.decode('ascii')
         return ((self.factory.username == username) and (password == self.factory.password))
 
     def write(self, data):
         """Write some data to the transport.
         """
+        if isinstance(data, unicode):
+            data = data.encode('ascii')
+
         self.transport.write(data)
 
     def telnet_Command(self, cmd):
         if self.lineBuffer:
             if not cmd:
-                cmd = string.join(self.lineBuffer, '\n') + '\n\n\n'
+                cmd = b'\n'.join(self.lineBuffer) + b'\n\n\n'
                 self.doCommand(cmd)
                 self.lineBuffer = []
                 return "Command"
             else:
                 self.lineBuffer.append(cmd)
-                self.transport.write("... ")
+                self.transport.write(b"... ")
                 return "Command"
         else:
             self.doCommand(cmd)
@@ -56,35 +70,40 @@ class Shell(telnet.Telnet):
             out = sys.stdout
             sys.stdout = self
             try:
-                code = compile(cmd,fn,'eval')
+                code = compile(cmd, fn, 'eval')
                 result = eval(code, self.factory.namespace)
-            except:
+            except Exception:
                 try:
                     code = compile(cmd, fn, 'exec')
-                    exec(code in self.factory.namespace)
+                    if _PY3:
+                        exec(code, self.factory.namespace)
+                    else:
+                        exec(code in self.factory.namespace)
                 except SyntaxError as e:
                     if not self.lineBuffer and str(e)[:14] == "unexpected EOF":
                         self.lineBuffer.append(cmd)
-                        self.transport.write("... ")
+                        self.transport.write(b"... ")
                         return
                     else:
                         failure.Failure().printTraceback(file=self)
                         log.deferr()
-                        self.write('\r\n>>> ')
+                        self.write(b'\r\n>>> ')
                         return
                 except:
-                    failure.Failure().printTraceback(file=self)
+                    f = StringIO()
+                    failure.Failure().printTraceback(file=f)
+                    self.write(f.getvalue().encode('ascii'))
                     log.deferr()
-                    self.write('\r\n>>> ')
+                    self.write(b'\r\n>>> ')
                     return
         finally:
             sys.stdout = out
 
         self.factory.namespace['_'] = result
         if result is not None:
-            self.transport.write(repr(result))
-            self.transport.write('\r\n')
-        self.transport.write(">>> ")
+            self.write(repr(result))
+            self.write(b'\r\n')
+        self.write(b">>> ")
 
 
 
