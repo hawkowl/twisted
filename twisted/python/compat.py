@@ -685,6 +685,13 @@ else:
     from base64 import decodestring as _b64decodebytes
 
 
+def _bytesChr(i):
+    if _PY3:
+        return bytes([i])
+    else:
+        return chr(i)
+
+
 __all__ = [
     "reraise",
     "execfile",
