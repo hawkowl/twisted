@@ -328,7 +328,7 @@ def packRequest_pty_req(term, args, modes):
 
     NOTE: modes must be packed before being sent here.
     """
-    args = (rows, cols, xpixel, ypixel)
+    (rows, cols, xpixel, ypixel) = args
     termPacked = common.NS(term)
     winSizePacked = struct.pack('>4L', cols, rows, xpixel, ypixel)
     modesPacked = common.NS(modes) # depend on the client packing modes
@@ -342,7 +342,7 @@ def parseRequest_window_change(data):
     cols, rows, xpixel, ypixel = struct.unpack('>4L', data)
     return rows, cols, xpixel, ypixel
 
-def packRequest_window_change():
+def packRequest_window_change(args):
     """Pack a window-change request so that it is suitable for sending.
     """
     (rows, cols, xpixel, ypixel) = args
