@@ -323,11 +323,12 @@ def parseRequest_pty_req(data):
     modes = [(ord(modes[i]), struct.unpack('>L', modes[i+1: i+5])[0]) for i in range(0, len(modes)-1, 5)]
     return term, winSize, modes
 
-def packRequest_pty_req(term, (rows, cols, xpixel, ypixel), modes):
+def packRequest_pty_req(term, args, modes):
     """Pack a pty-req request so that it is suitable for sending.
 
     NOTE: modes must be packed before being sent here.
     """
+    args = (rows, cols, xpixel, ypixel)
     termPacked = common.NS(term)
     winSizePacked = struct.pack('>4L', cols, rows, xpixel, ypixel)
     modesPacked = common.NS(modes) # depend on the client packing modes
@@ -341,9 +342,10 @@ def parseRequest_window_change(data):
     cols, rows, xpixel, ypixel = struct.unpack('>4L', data)
     return rows, cols, xpixel, ypixel
 
-def packRequest_window_change((rows, cols, xpixel, ypixel)):
+def packRequest_window_change():
     """Pack a window-change request so that it is suitable for sending.
     """
+    (rows, cols, xpixel, ypixel) = args
     return struct.pack('>4L', cols, rows, xpixel, ypixel)
 
-import connection
+from twisted.conch.ssh import connection

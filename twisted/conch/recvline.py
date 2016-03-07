@@ -10,6 +10,8 @@ Basic line editing support.
 
 import string
 
+from functools import partial
+
 from zope.interface import implementer
 
 from twisted.conch.insults import insults, helper
@@ -60,7 +62,7 @@ class TransportSequence(object):
                   'HOME', 'INSERT', 'DELETE', 'END', 'PGUP', 'PGDN',
                   'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9',
                   'F10', 'F11', 'F12'):
-        exec '%s = object()' % (keyID,)
+        locals().update({keyID: object()})
 
     TAB = '\t'
     BACKSPACE = '\x7f'
@@ -69,13 +71,16 @@ class TransportSequence(object):
         assert transports, "Cannot construct a TransportSequence with no transports"
         self.transports = transports
 
+
+    def _methodHandler(self, method, *a, **kw):
+        for tpt in self.transports:
+            result = getattr(tpt, method)(*a, **kw)
+        return result
+
     for method in insults.ITerminalTransport:
-        exec """\
-def %s(self, *a, **kw):
-    for tpt in self.transports:
-        result = tpt.%s(*a, **kw)
-    return result
-""" % (method, method)
+        locals().update({method: partial(_methodHandler, method)})
+
+    del _methodHandler
 
 class LocalTerminalBufferMixin(object):
     """A mixin for RecvLine subclasses which records the state of the terminal.

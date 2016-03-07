@@ -17,6 +17,7 @@ from twisted.cred import credentials
 from twisted.cred.error import UnauthorizedLogin
 from twisted.internet import defer, reactor
 from twisted.python import failure, log
+from twisted.python.compat import items
 
 
 
@@ -184,12 +185,13 @@ class SSHUserAuthServer(service.SSHService):
         return d
 
 
-    def _cbFinishedAuth(self, (interface, avatar, logout)):
+    def _cbFinishedAuth(self, args):
         """
         The callback when user has successfully been authenticated.  For a
         description of the arguments, see L{twisted.cred.portal.Portal.login}.
         We start the service requested by the user.
         """
+        (interface, avatar, logout) = args
         self.transport.avatar = avatar
         self.transport.logoutFunction = logout
         service = self.transport.factory.getService(self.transport,
@@ -744,7 +746,7 @@ MSG_USERAUTH_INFO_RESPONSE    = 61
 MSG_USERAUTH_PK_OK            = 60
 
 messages = {}
-for k, v in locals().items():
+for k, v in items(locals()):
     if k[:4]=='MSG_':
         messages[v] = k
 

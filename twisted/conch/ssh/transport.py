@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
 
 from twisted.internet import protocol, defer
 from twisted.python import log, randbytes
+from twisted.python.compat import items
 
 
 from twisted.conch.ssh import address, keys, _kex
@@ -1842,7 +1843,7 @@ DISCONNECT_ILLEGAL_USER_NAME = 15
 
 
 messages = {}
-for name, value in globals().items():
+for name, value in items(globals()):
     # Avoid legacy messages which overlap with never ones
     if name.startswith('MSG_') and not name.startswith('MSG_KEXDH_'):
         messages[value] = name

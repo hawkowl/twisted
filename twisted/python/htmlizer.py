@@ -7,7 +7,7 @@ HTML rendering of Python source.
 """
 
 import tokenize, cgi, keyword
-import reflect
+from twisted.python import reflect
 
 class TokenPrinter:
 
@@ -17,7 +17,9 @@ class TokenPrinter:
     def __init__(self, writer):
         self.writer = writer
 
-    def printtoken(self, type, token, (srow, scol), (erow, ecol), line):
+    def printtoken(self, type, token, srowcol, erowcol, line):
+        (srow, scol) = srowcol
+        (erow, ecol) = erowcol
         #print "printtoken(%r,%r,%r,(%r,%r),(%r,%r),%r), row=%r,col=%r" % (
         #    self, type, token, srow,scol, erow,ecol, line,
         #    self.currentLine, self.currentCol)
