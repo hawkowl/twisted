@@ -15,10 +15,7 @@ warnings.warn(
 
 
 # System Imports
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import BytesIO
 
 # Twisted Imports
 from twisted import copyright
@@ -122,7 +119,7 @@ HIDE  =         chr(133)  # The intention is that a server will send
 
 NOECHO=         chr(131)  # User-to-Server:  Asks the server not to
                           # return Echos of the transmitted data.
-                          # 
+                          #
                           # Server-to-User:  States that the server is
                           # not sending echos of the transmitted data.
                           # Sent only as a reply to ECHO or NO ECHO,
@@ -257,7 +254,7 @@ class Telnet(protocol.Protocol):
             idx = self.buffer.find(delim)
             if idx != -1:
                 break
-            
+
         while idx != -1:
             buf, self.buffer = self.buffer[:idx], self.buffer[idx+2:]
             self.processLine(buf)
@@ -270,7 +267,7 @@ class Telnet(protocol.Protocol):
                     break
 
     def dataReceived(self, data):
-        chunk = StringIO()
+        chunk = BytesIO()
         # silly little IAC state-machine
         for char in data:
             if self.gotIAC:
@@ -280,7 +277,7 @@ class Telnet(protocol.Protocol):
                     if self.iacByte == SB:
                         if char == SE:
                             self.iacSBchunk(chunk.getvalue())
-                            chunk = StringIO()
+                            chunk = BytesIO()
                             del self.iacByte
                             del self.gotIAC
                         else:
@@ -306,7 +303,7 @@ class Telnet(protocol.Protocol):
                     why = self.processChunk(c)
                     if why:
                         return why
-                    chunk = StringIO()
+                    chunk = BytesIO()
                 self.gotIAC = 1
             else:
                 chunk.write(char)
@@ -319,7 +316,7 @@ class Telnet(protocol.Protocol):
 
     def loggedIn(self):
         """Called after the user succesfully logged in.
-        
+
         Override in subclasses.
         """
         pass

@@ -15,14 +15,14 @@ import string, copy, sys
 
 class Shell(telnet.Telnet):
     """A Python command-line shell."""
-    
+
     def connectionMade(self):
         telnet.Telnet.connectionMade(self)
         self.lineBuffer = []
-    
+
     def loggedIn(self):
         self.transport.write(">>> ")
-    
+
     def checkUserAndPass(self, username, password):
         return ((self.factory.username == username) and (password == self.factory.password))
 
@@ -45,7 +45,7 @@ class Shell(telnet.Telnet):
         else:
             self.doCommand(cmd)
             return "Command"
-    
+
     def doCommand(self, cmd):
 
         # TODO -- refactor this, Reality.author.Author, and the manhole shell
@@ -61,8 +61,8 @@ class Shell(telnet.Telnet):
             except:
                 try:
                     code = compile(cmd, fn, 'exec')
-                    exec code in self.factory.namespace
-                except SyntaxError, e:
+                    exec(code in self.factory.namespace)
+                except SyntaxError as e:
                     if not self.lineBuffer and str(e)[:14] == "unexpected EOF":
                         self.lineBuffer.append(cmd)
                         self.transport.write("... ")
@@ -79,7 +79,7 @@ class Shell(telnet.Telnet):
                     return
         finally:
             sys.stdout = out
-        
+
         self.factory.namespace['_'] = result
         if result is not None:
             self.transport.write(repr(result))
