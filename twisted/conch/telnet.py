@@ -623,7 +623,7 @@ class Telnet(protocol.Protocol):
         """
 
     def negotiate(self, bytes):
-        command, bytes = bytes[0:1], bytes[1:]
+        command, bytes = bytes[0], bytes[1:]
         cmdFunc = self.negotiationMap.get(command)
         if cmdFunc is None:
             self.unhandledSubnegotiation(command, bytes)
