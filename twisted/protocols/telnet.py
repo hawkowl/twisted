@@ -1,10 +1,11 @@
-
 # Copyright (c) Twisted Matrix Laboratories.
 # See LICENSE for details.
 
-
-"""TELNET implementation, with line-oriented command handling.
 """
+TELNET implementation, with line-oriented command handling.
+"""
+
+from __future__ import absolute_import, division
 
 import warnings
 warnings.warn(
@@ -13,11 +14,8 @@ warnings.warn(
     DeprecationWarning,
     stacklevel=2)
 
-
-# System Imports
 from io import BytesIO
 
-# Twisted Imports
 from twisted import copyright
 from twisted.internet import protocol
 from twisted.python.compat import networkString, iterbytes, _bytesChr as chr
@@ -142,7 +140,8 @@ def multireplace(st, dct):
     return st
 
 class Telnet(protocol.Protocol):
-    """I am a Protocol for handling Telnet connections. I have two
+    """
+    I am a Protocol for handling Telnet connections. I have two
     sets of special methods, telnet_* and iac_*.
 
     telnet_* methods get called on every line sent to me. The method
