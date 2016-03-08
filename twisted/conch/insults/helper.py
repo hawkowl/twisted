@@ -18,6 +18,7 @@ from twisted.internet import defer, protocol, reactor
 from twisted.python import log, _textattributes
 from twisted.python.deprecate import deprecated, deprecatedModuleAttribute
 from twisted.python.versions import Version
+from twisted.python.compat import xrange
 from twisted.conch.insults import insults
 
 FOREGROUND = 30
@@ -88,7 +89,7 @@ class _FormattingState(_textattributes._FormattingStateMixin):
             attrs.append(BACKGROUND + self.background)
         if attrs:
             return '\x1b[' + ';'.join(map(str, attrs)) + 'm'
-        return ''
+        return b''
 
 CharacterAttribute = _FormattingState
 
@@ -408,8 +409,8 @@ class TerminalBuffer(protocol.Protocol):
                     length = len(buf)
                 else:
                     buf.append(self.fill)
-            lines.append(''.join(buf[:length]))
-        return '\n'.join(lines)
+            lines.append(b''.join(buf[:length]))
+        return b'\n'.join(lines)
 
 class ExpectationTimeout(Exception):
     pass

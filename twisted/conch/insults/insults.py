@@ -380,11 +380,11 @@ class ServerProtocol(protocol.Protocol):
     protocolFactory = None
     terminalProtocol = None
 
-    TAB = '\t'
-    BACKSPACE = '\x7f'
+    TAB = b'\t'
+    BACKSPACE = b'\x7f'
     ##
 
-    lastWrite = ''
+    lastWrite = b''
 
     state = 'data'
 
@@ -446,7 +446,7 @@ class ServerProtocol(protocol.Protocol):
                 if ch == 'O':
                     self.state = 'low-function-escaped'
                 elif ch.isalpha() or ch == '~':
-                    self._handleControlSequence(''.join(self.escBuf) + ch)
+                    self._handleControlSequence(b''.join(self.escBuf) + ch)
                     del self.escBuf
                     self.state = 'data'
                 else:
@@ -748,7 +748,7 @@ class ServerProtocol(protocol.Protocol):
     def reportCursorPosition(self):
         d = defer.Deferred()
         self._cursorReports.append(d)
-        self.write('\x1b[6n')
+        self.write(b'\x1b[6n')
         return d
 
     def reset(self):
@@ -757,16 +757,16 @@ class ServerProtocol(protocol.Protocol):
             del self._savedCursorPos
         except AttributeError:
             pass
-        self.write('\x1bc')
+        self.write(b'\x1bc')
 
     # ITransport
     def write(self, bytes):
         if bytes:
             self.lastWrite = bytes
-            self.transport.write('\r\n'.join(bytes.split('\n')))
+            self.transport.write(b'\r\n'.join(bytes.split(b'\n')))
 
     def writeSequence(self, bytes):
-        self.write(''.join(bytes))
+        self.write(b''.join(bytes))
 
     def loseConnection(self):
         self.reset()
