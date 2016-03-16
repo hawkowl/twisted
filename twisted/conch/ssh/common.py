@@ -19,8 +19,13 @@ from twisted.python.compat import _PY3, long
 
 def NS(t):
     """
-    net string
+    net string.
+
+    @type t: L{bytes}
+    @return t: L{bytes}
     """
+    if not isinstance(t, bytes):
+        assert False, t
     return struct.pack('!L', len(t)) + t
 
 
@@ -28,6 +33,9 @@ def NS(t):
 def getNS(s, count=1):
     """
     get net string
+
+    @type s: L{bytes}
+    @return t: L{bytes}
     """
     ns = []
     c = 0

@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
 
 from twisted.internet import protocol, defer
 from twisted.python import log, randbytes
-from twisted.python.compat import items
+from twisted.python.compat import items, _bytesChr as chr
 
 
 from twisted.conch.ssh import address, keys, _kex
@@ -123,26 +123,26 @@ class SSHCiphers:
     """
 
     cipherMap = {
-        '3des-cbc': (algorithms.TripleDES, 24, modes.CBC),
-        'blowfish-cbc': (algorithms.Blowfish, 16, modes.CBC),
-        'aes256-cbc': (algorithms.AES, 32, modes.CBC),
-        'aes192-cbc': (algorithms.AES, 24, modes.CBC),
-        'aes128-cbc': (algorithms.AES, 16, modes.CBC),
-        'cast128-cbc': (algorithms.CAST5, 16, modes.CBC),
-        'aes128-ctr': (algorithms.AES, 16, modes.CTR),
-        'aes192-ctr': (algorithms.AES, 24, modes.CTR),
-        'aes256-ctr': (algorithms.AES, 32, modes.CTR),
-        '3des-ctr': (algorithms.TripleDES, 24, modes.CTR),
-        'blowfish-ctr': (algorithms.Blowfish, 16, modes.CTR),
-        'cast128-ctr': (algorithms.CAST5, 16, modes.CTR),
-        'none': (None, 0, modes.CBC),
+        b'3des-cbc': (algorithms.TripleDES, 24, modes.CBC),
+        b'blowfish-cbc': (algorithms.Blowfish, 16, modes.CBC),
+        b'aes256-cbc': (algorithms.AES, 32, modes.CBC),
+        b'aes192-cbc': (algorithms.AES, 24, modes.CBC),
+        b'aes128-cbc': (algorithms.AES, 16, modes.CBC),
+        b'cast128-cbc': (algorithms.CAST5, 16, modes.CBC),
+        b'aes128-ctr': (algorithms.AES, 16, modes.CTR),
+        b'aes192-ctr': (algorithms.AES, 24, modes.CTR),
+        b'aes256-ctr': (algorithms.AES, 32, modes.CTR),
+        b'3des-ctr': (algorithms.TripleDES, 24, modes.CTR),
+        b'blowfish-ctr': (algorithms.Blowfish, 16, modes.CTR),
+        b'cast128-ctr': (algorithms.CAST5, 16, modes.CTR),
+        b'none': (None, 0, modes.CBC),
     }
     macMap = {
-        'hmac-sha2-512': sha512,
-        'hmac-sha2-256': sha256,
-        'hmac-sha1': sha1,
-        'hmac-md5': md5,
-        'none': None
+        b'hmac-sha2-512': sha512,
+        b'hmac-sha2-256': sha256,
+        b'hmac-sha1': sha1,
+        b'hmac-md5': md5,
+        b'none': None
      }
 
 
@@ -229,7 +229,7 @@ class SSHCiphers:
         # Truncation here appears to contravene RFC 2104, section 2.  However,
         # implementing the hashing behavior prescribed by the RFC breaks
         # interoperability with OpenSSH (at least version 5.5p1).
-        key = key[:digestSize] + ('\x00' * (blockSize - digestSize))
+        key = key[:digestSize] + (b'\x00' * (blockSize - digestSize))
         i = string.translate(key, hmac.trans_36)
         o = string.translate(key, hmac.trans_5C)
         result = _MACParams((mod, i, o, digestSize))
@@ -278,7 +278,7 @@ class SSHCiphers:
         @return: The serialized MAC.
         """
         if not self.outMAC[0]:
-            return ''
+            return b''
         data = struct.pack('>L', seqid) + data
         return hmac.HMAC(self.outMAC.key, data, self.outMAC[0]).digest()
 
@@ -300,7 +300,7 @@ class SSHCiphers:
         @return: C{True} if the MAC is valid.
         """
         if not self.inMAC[0]:
-            return mac == ''
+            return mac == b''
         data = struct.pack('>L', seqid) + data
         outer = hmac.HMAC(self.inMAC.key, data, self.inMAC[0]).digest()
         return mac == outer
@@ -315,9 +315,9 @@ def _getSupportedCiphers():
     @rtype: L{list} of L{str}
     """
     supportedCiphers = []
-    cs = ['aes256-ctr', 'aes256-cbc', 'aes192-ctr', 'aes192-cbc',
-          'aes128-ctr', 'aes128-cbc', 'cast128-ctr', 'cast128-cbc',
-          'blowfish-ctr', 'blowfish-cbc', '3des-ctr', '3des-cbc']
+    cs = [b'aes256-ctr', b'aes256-cbc', b'aes192-ctr', b'aes192-cbc',
+          b'aes128-ctr', b'aes128-cbc', b'cast128-ctr', b'cast128-cbc',
+          b'blowfish-ctr', b'blowfish-cbc', b'3des-ctr', b'3des-cbc']
     for cipher in cs:
         algorithmClass, keySize, modeClass = SSHCiphers.cipherMap[cipher]
         try:
@@ -448,10 +448,10 @@ class SSHTransportBase(protocol.Protocol):
         to send them while a key exchange is in progress.  When the key
         exchange completes, another attempt is made to send these messages.
     """
-    protocolVersion = '2.0'
-    version = 'Twisted'
-    comment = ''
-    ourVersionString = ('SSH-' + protocolVersion + '-' + version + ' '
+    protocolVersion = b'2.0'
+    version = b'Twisted'
+    comment = b''
+    ourVersionString = (b'SSH-' + protocolVersion + b'-' + version + b' '
             + comment).strip()
 
     # C{none} is supported as cipher and hmac. For security they are disabled
@@ -460,21 +460,21 @@ class SSHTransportBase(protocol.Protocol):
     # List ordered by preference.
     supportedCiphers = _getSupportedCiphers()
     supportedMACs = [
-        'hmac-sha2-512',
-        'hmac-sha2-256',
-        'hmac-sha1',
-        'hmac-md5',
+        b'hmac-sha2-512',
+        b'hmac-sha2-256',
+        b'hmac-sha1',
+        b'hmac-md5',
         # `none`,
         ]
 
     supportedKeyExchanges = _kex.getSupportedKeyExchanges()
-    supportedPublicKeys = ['ssh-rsa', 'ssh-dss']
-    supportedCompressions = ['none', 'zlib']
+    supportedPublicKeys = [b'ssh-rsa', b'ssh-dss']
+    supportedCompressions = [b'none', b'zlib']
     supportedLanguages = ()
-    supportedVersions = ('1.99', '2.0')
+    supportedVersions = (b'1.99', b'2.0')
     isClient = False
     gotVersion = False
-    buf = ''
+    buf = b''
     outgoingPacketSequence = 0
     incomingPacketSequence = 0
     outgoingCompression = None
@@ -519,9 +519,9 @@ class SSHTransportBase(protocol.Protocol):
         Called when the connection is made to the other side.  We sent our
         version and the MSG_KEXINIT packet.
         """
-        self.transport.write('%s\r\n' % (self.ourVersionString,))
-        self.currentEncryptions = SSHCiphers('none', 'none', 'none', 'none')
-        self.currentEncryptions.setKeys('', '', '', '', '', '')
+        self.transport.write(self.ourVersionString + b'\r\n')
+        self.currentEncryptions = SSHCiphers(b'none', b'none', b'none', b'none')
+        self.currentEncryptions.setKeys(b'', b'', b'', b'', b'', b'')
         self.sendKexInit()
 
 
@@ -542,17 +542,17 @@ class SSHTransportBase(protocol.Protocol):
 
         self.ourKexInitPayload = (chr(MSG_KEXINIT) +
                randbytes.secureRandom(16) +
-               NS(','.join(self.supportedKeyExchanges)) +
-               NS(','.join(self.supportedPublicKeys)) +
-               NS(','.join(self.supportedCiphers)) +
-               NS(','.join(self.supportedCiphers)) +
-               NS(','.join(self.supportedMACs)) +
-               NS(','.join(self.supportedMACs)) +
-               NS(','.join(self.supportedCompressions)) +
-               NS(','.join(self.supportedCompressions)) +
-               NS(','.join(self.supportedLanguages)) +
-               NS(','.join(self.supportedLanguages)) +
-               '\000' + '\000\000\000\000')
+               NS(b','.join(self.supportedKeyExchanges)) +
+               NS(b','.join(self.supportedPublicKeys)) +
+               NS(b','.join(self.supportedCiphers)) +
+               NS(b','.join(self.supportedCiphers)) +
+               NS(b','.join(self.supportedMACs)) +
+               NS(b','.join(self.supportedMACs)) +
+               NS(b','.join(self.supportedCompressions)) +
+               NS(b','.join(self.supportedCompressions)) +
+               NS(b','.join(self.supportedLanguages)) +
+               NS(b','.join(self.supportedLanguages)) +
+               b'\000' + b'\000\000\000\000')
         self.sendPacket(MSG_KEXINIT, self.ourKexInitPayload[1:])
         self._keyExchangeState = self._KEY_EXCHANGE_REQUESTED
         self._blockedByKeyExchange = []
@@ -702,22 +702,22 @@ class SSHTransportBase(protocol.Protocol):
         """
         self.buf = self.buf + data
         if not self.gotVersion:
-            if self.buf.find('\n', self.buf.find('SSH-')) == -1:
+            if self.buf.find(b'\n', self.buf.find(b'SSH-')) == -1:
                 return
-            lines = self.buf.split('\n')
+            lines = self.buf.split(b'\n')
             for p in lines:
-                if p.startswith('SSH-'):
+                if p.startswith(b'SSH-'):
                     self.gotVersion = True
                     self.otherVersionString = p.strip()
-                    remoteVersion = p.split('-')[1]
+                    remoteVersion = p.split(b'-')[1]
                     if remoteVersion not in self.supportedVersions:
                         self._unsupportedVersionReceived(remoteVersion)
                         return
                     i = lines.index(p)
-                    self.buf = '\n'.join(lines[i + 1:])
+                    self.buf = b'\n'.join(lines[i + 1:])
         packet = self.getPacket()
         while packet:
-            messageNum = ord(packet[0])
+            messageNum = ord(packet[0:1])
             self.dispatchMessage(messageNum, packet[1:])
             packet = self.getPacket()
 
@@ -1012,7 +1012,7 @@ class SSHTransportBase(protocol.Protocol):
         @type desc: C{str}
         """
         self.sendPacket(
-            MSG_DISCONNECT, struct.pack('>L', reason) + NS(desc) + NS(''))
+            MSG_DISCONNECT, struct.pack('>L', reason) + NS(desc) + NS(b''))
         log.msg('Disconnecting with error, code %s\nreason: %s' % (reason,
                                                                    desc))
         self.transport.loseConnection()
@@ -1138,7 +1138,7 @@ class SSHTransportBase(protocol.Protocol):
         DISCONNECT_CONNECTION_LOST message.
         """
         self.sendDisconnect(DISCONNECT_CONNECTION_LOST,
-                            "user closed connection")
+                            b"user closed connection")
 
     # Client methods
 
