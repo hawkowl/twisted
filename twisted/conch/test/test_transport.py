@@ -1754,17 +1754,6 @@ class ClientSSHTransportTests(ClientSSHTransportBaseCase, TransportTestCase):
         self.assertKexInitResponseForDH(b'diffie-hellman-group1-sha1')
 
 
-    def test_KEXINIT_badKexAlg(self):
-        """
-        Test that the client raises a ConchError if it receives a
-        KEXINIT message but doesn't have a key exchange algorithm that we
-        understand.
-        """
-        self.proto.supportedKeyExchanges = [b'diffie-hellman-group2-sha1']
-        data = self.transport.value().replace(b'group1', b'group2')
-        self.assertRaises(ConchError, self.proto.dataReceived, data)
-
-
     def test_KEXDH_REPLY(self):
         """
         Test that the KEXDH_REPLY message verifies the server.

@@ -28,6 +28,7 @@ from twisted.internet import protocol, defer
 from twisted.python import log, randbytes
 from twisted.python.compat import items, _bytesChr as chr, networkString, iterbytes, nativeString
 
+from twisted.conch.error import ConchError
 from twisted.conch.ssh import address, keys, _kex
 from twisted.conch.ssh.common import (
     NS, getNS, MP, getMP, _MPpow, ffs, int_from_bytes
@@ -790,12 +791,13 @@ class SSHTransportBase(protocol.Protocol):
     def kexAlg(self, value):
         """
         Set the key exchange algorithm name.
-
-        @raises ConchError: if the key exchange algorithm is not found.
         """
-        # Check for supportedness.
-        _kex.getKex(value)
-        self._kexAlg = value
+        try:
+            # Check for supportedness.
+            _kex.getKex(value)
+            self._kexAlg = value
+        except ConchError:
+            self._kexAlg = None
 
     # Client-initiated rekeying looks like this:
     #
@@ -840,6 +842,7 @@ class SSHTransportBase(protocol.Protocol):
         algorithms, and unhandled data, or C{None} if something went wrong.
         """
         self.otherKexInitPayload = chr(MSG_KEXINIT) + packet
+
         # This is useless to us:
         # cookie = packet[: 16]
         k = getNS(packet[16:], 10)
