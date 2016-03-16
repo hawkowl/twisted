@@ -14,6 +14,7 @@ from functools import cmp_to_key
 
 from twisted.internet import protocol
 from twisted.python import log
+from twisted.python.compat import cmp
 
 from twisted.conch import error
 from twisted.conch.ssh import _kex, transport, userauth, connection
@@ -107,7 +108,7 @@ class SSHFactory(protocol.Factory):
         @rtype:     C{tuple}
         """
         primesKeys = list(self.primes.keys())
-        primesKeys.sort(key=cmp_to_key(lambda x, y: abs(x - bits) == abs(y - bits)))
+        primesKeys.sort(key=cmp_to_key(lambda x, y: cmp(abs(x - bits),  abs(y - bits))))
         realBits = primesKeys[0]
         return random.choice(self.primes[realBits])
 
