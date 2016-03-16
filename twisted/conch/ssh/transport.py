@@ -157,8 +157,8 @@ class SSHCiphers:
         self.encBlockSize = 0
         self.decBlockSize = 0
         self.verifyDigestSize = 0
-        self.outMAC = (None, '', '', 0)
-        self.inMAC = (None, '', '', 0)
+        self.outMAC = (None, b'', b'', 0)
+        self.inMAC = (None, b'', b'', 0)
 
 
     def setKeys(self, outIV, outKey, inIV, inKey, outInteg, inInteg):
@@ -849,23 +849,30 @@ class SSHTransportBase(protocol.Protocol):
         # These are the server directions
         outs = [encSC, macSC, compSC]
         ins = [encCS, macSC, compCS]
+
         if self.isClient:
             outs, ins = ins, outs # Switch directions
+
         server = (self.supportedKeyExchanges, self.supportedPublicKeys,
-                self.supportedCiphers, self.supportedCiphers,
-                self.supportedMACs, self.supportedMACs,
-                self.supportedCompressions, self.supportedCompressions)
+                  self.supportedCiphers, self.supportedCiphers,
+                  self.supportedMACs, self.supportedMACs,
+                  self.supportedCompressions, self.supportedCompressions)
+
         client = (kexAlgs, keyAlgs, outs[0], ins[0], outs[1], ins[1],
                 outs[2], ins[2])
+
         if self.isClient:
             server, client = client, server
+
         self.kexAlg = ffs(client[0], server[0])
         self.keyAlg = ffs(client[1], server[1])
+
         self.nextEncryptions = SSHCiphers(
             ffs(client[2], server[2]),
             ffs(client[3], server[3]),
             ffs(client[4], server[4]),
             ffs(client[5], server[5]))
+
         self.outgoingCompressionType = ffs(client[6], server[6])
         self.incomingCompressionType = ffs(client[7], server[7])
         if None in (self.kexAlg, self.keyAlg, self.outgoingCompressionType,
@@ -968,7 +975,7 @@ class SSHTransportBase(protocol.Protocol):
         self.service.serviceStarted()
 
 
-    def sendDebug(self, message, alwaysDisplay=False, language=''):
+    def sendDebug(self, message, alwaysDisplay=False, language=b''):
         """
         Send a debug message to the other side.
 
@@ -1107,9 +1114,9 @@ class SSHTransportBase(protocol.Protocol):
         @return: C{True} if it is encrypted.
         """
         if direction == "out":
-            return self.currentEncryptions.outCipType != 'none'
+            return self.currentEncryptions.outCipType != b'none'
         elif direction == "in":
-            return self.currentEncryptions.inCipType != 'none'
+            return self.currentEncryptions.inCipType != b'none'
         elif direction == "both":
             return self.isEncrypted("in") and self.isEncrypted("out")
         else:
@@ -1127,9 +1134,9 @@ class SSHTransportBase(protocol.Protocol):
         @return: C{True} if it is verified.
         """
         if direction == "out":
-            return self.currentEncryptions.outMACType != 'none'
+            return self.currentEncryptions.outMACType != b'none'
         elif direction == "in":
-            return self.currentEncryptions.inMACType != 'none'
+            return self.currentEncryptions.inMACType != b'none'
         elif direction == "both":
             return self.isVerified("in") and self.isVerified("out")
         else:
@@ -1533,7 +1540,7 @@ class SSHClientTransport(SSHTransportBase):
         d.addCallback(self._continueKEXDH_REPLY, pubKey, f, signature)
         d.addErrback(
             lambda unused: self.sendDisconnect(
-                DISCONNECT_HOST_KEY_NOT_VERIFIABLE, 'bad host key'))
+                DISCONNECT_HOST_KEY_NOT_VERIFIABLE, b'bad host key'))
         return d
 
 
@@ -1681,7 +1688,7 @@ class SSHClientTransport(SSHTransportBase):
         @type packet: L{bytes}
         @param packet: The message data.
         """
-        if packet != '':
+        if packet != b'':
             self.sendDisconnect(DISCONNECT_PROTOCOL_ERROR,
                                 b"NEWKEYS takes no data")
             return
@@ -1702,7 +1709,7 @@ class SSHClientTransport(SSHTransportBase):
         @type packet: L{bytes}
         @param packet: The message data.
         """
-        if packet == '':
+        if packet == b'':
             log.msg('got SERVICE_ACCEPT without payload')
         else:
             name = getNS(packet)[0]
